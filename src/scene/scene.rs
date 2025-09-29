@@ -13,11 +13,11 @@ impl Scene {
         }
     }
 
-    pub fn add(&self, child: Rc<RefCell<Object3D>>) {
-        Object3D::add(&self.root, child);
+    pub fn add(&self, child: &Rc<RefCell<Object3D>>) -> bool {
+        Object3D::add(&self.root, child)
     }
 
-    pub fn remove(&self, child: &Rc<RefCell<Object3D>>) -> Option<Rc<RefCell<Object3D>>> {
+    pub fn remove(&self, child: &Rc<RefCell<Object3D>>) -> bool {
         Object3D::remove(&self.root, child)
     }
 
