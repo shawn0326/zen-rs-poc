@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use zen_rs_poc::{
     graphics::{Geometry, Material, Primitive},
+    render::{RenderTarget, ScreenSurfaceLike},
     scene::{Object3D, Scene},
 };
 
@@ -56,4 +57,13 @@ fn main() {
             .world_matrix
             .elements
     );
+
+    struct DummySurface;
+    impl ScreenSurfaceLike for DummySurface {
+        fn get_size(&self) -> (u32, u32) {
+            (800, 600)
+        }
+    }
+    let screen_render_target = RenderTarget::screen(Box::new(DummySurface), 300, 300);
+    println!("Screen RenderTarget: {:?}", screen_render_target);
 }

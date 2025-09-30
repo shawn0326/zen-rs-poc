@@ -1,3 +1,6 @@
-mod render_target;
+mod target;
 
-pub use render_target::*;
+pub use target::RenderTarget;
+pub use target::ScreenSurfaceLike;
+
+pub mod traits;
