@@ -22,6 +22,6 @@ impl Scene {
     }
 
     pub fn update_world_matrix(&self) {
-        self.root.borrow_mut().update_world_matrix();
+        Object3D::update_world_matrix(&self.root);
     }
 }

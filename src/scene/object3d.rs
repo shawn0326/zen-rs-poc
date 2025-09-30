@@ -1,3 +1,4 @@
+use crate::graphics::Primitive;
 use crate::math::{Matrix4, Quaternion, Vector3};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
@@ -10,8 +11,9 @@ pub struct Object3D {
     pub quaternion: Quaternion,
     pub matrix: Matrix4,
     pub world_matrix: Matrix4,
-    pub children: Vec<Rc<RefCell<Object3D>>>,
+    children: Vec<Rc<RefCell<Object3D>>>,
     parent: Weak<RefCell<Object3D>>,
+    pub primitives: Vec<Primitive>,
 }
 
 impl Object3D {
@@ -26,6 +28,7 @@ impl Object3D {
             world_matrix: Matrix4::new(),
             children: Vec::new(),
             parent: Weak::new(),
+            primitives: Vec::new(),
         }))
     }
 
@@ -51,7 +54,7 @@ impl Object3D {
         }
 
         // If the child already has a parent, remove it from that parent first
-        if let Some(old_parent) = Self::get_parent(child) {
+        if let Some(old_parent) = Self::parent(child) {
             Self::remove(&old_parent, child);
         }
 
@@ -75,18 +78,36 @@ impl Object3D {
         potential_ancestor: &Rc<RefCell<Self>>,
         potential_descendant: &Rc<RefCell<Self>>,
     ) -> bool {
-        let mut current = Self::get_parent(potential_descendant);
+        let mut current = Self::parent(potential_descendant);
 
         while let Some(parent) = current {
             if Rc::ptr_eq(&parent, potential_ancestor) {
                 return true;
             }
-            current = Self::get_parent(&parent);
+            current = Self::parent(&parent);
         }
         false
     }
 
-    pub fn get_parent(obj: &Rc<RefCell<Self>>) -> Option<Rc<RefCell<Self>>> {
+    pub fn traverse<F>(root: &Rc<RefCell<Self>>, callback: &F)
+    where
+        F: Fn(&Rc<RefCell<Self>>),
+    {
+        callback(root);
+
+        // clone children to avoid borrow conflicts
+        let children = &root.borrow().children.clone();
+
+        for child in children {
+            Self::traverse(child, callback);
+        }
+    }
+
+    pub fn children(&self) -> &Vec<Rc<RefCell<Self>>> {
+        &self.children
+    }
+
+    pub fn parent(obj: &Rc<RefCell<Self>>) -> Option<Rc<RefCell<Self>>> {
         obj.borrow().parent.upgrade()
     }
 
@@ -95,18 +116,26 @@ impl Object3D {
             .compose(&self.position, &self.quaternion, &self.scale);
     }
 
-    pub fn update_world_matrix(&mut self) {
-        self.update_matrix();
+    pub fn update_world_matrix(root: &Rc<RefCell<Self>>) {
+        {
+            let mut current_mut = root.borrow_mut();
 
-        if let Some(parent) = self.parent.upgrade() {
-            self.world_matrix
-                .multiply_matrices(&parent.borrow().world_matrix, &self.matrix);
-        } else {
-            self.world_matrix.copy(&self.matrix);
+            current_mut.update_matrix();
+
+            let matrix = &current_mut.matrix.clone();
+
+            if let Some(parent) = current_mut.parent.upgrade() {
+                current_mut
+                    .world_matrix
+                    .multiply_matrices(&parent.borrow().world_matrix, matrix);
+            } else {
+                current_mut.world_matrix.copy(matrix);
+            }
         }
 
-        for child in &self.children {
-            child.borrow_mut().update_world_matrix();
+        let children = &root.borrow().children.clone();
+        for child in children {
+            Self::update_world_matrix(child);
         }
     }
 }
@@ -159,16 +188,16 @@ mod tests {
         let child = Object3D::new();
 
         // Before add: no parent
-        assert!(Object3D::get_parent(&child).is_none());
+        assert!(Object3D::parent(&child).is_none());
 
         // After add: has parent
         Object3D::add(&parent, &child);
-        assert!(Object3D::get_parent(&child).is_some());
-        assert!(Rc::ptr_eq(&Object3D::get_parent(&child).unwrap(), &parent));
+        assert!(Object3D::parent(&child).is_some());
+        assert!(Rc::ptr_eq(&Object3D::parent(&child).unwrap(), &parent));
 
         // After remove: no parent again
         Object3D::remove(&parent, &child);
-        assert!(Object3D::get_parent(&child).is_none());
+        assert!(Object3D::parent(&child).is_none());
     }
 
     #[test]
@@ -217,7 +246,7 @@ mod tests {
             "Object should have no children"
         );
         assert!(
-            Object3D::get_parent(&obj).is_none(),
+            Object3D::parent(&obj).is_none(),
             "Object should have no parent"
         );
     }
@@ -281,10 +310,10 @@ mod tests {
         assert_eq!(child.borrow().children.len(), 0);
 
         assert!(Rc::ptr_eq(
-            &Object3D::get_parent(&parent).unwrap(),
+            &Object3D::parent(&parent).unwrap(),
             &grandparent
         ));
-        assert!(Rc::ptr_eq(&Object3D::get_parent(&child).unwrap(), &parent));
+        assert!(Rc::ptr_eq(&Object3D::parent(&child).unwrap(), &parent));
     }
 
     #[test]
@@ -305,8 +334,8 @@ mod tests {
         // Verify original relationship is intact
         assert_eq!(parent.borrow().children.len(), 1);
         assert_eq!(child.borrow().children.len(), 0);
-        assert!(Rc::ptr_eq(&Object3D::get_parent(&child).unwrap(), &parent));
-        assert!(Object3D::get_parent(&parent).is_none());
+        assert!(Rc::ptr_eq(&Object3D::parent(&child).unwrap(), &parent));
+        assert!(Object3D::parent(&parent).is_none());
     }
 
     #[test]
@@ -405,7 +434,7 @@ mod tests {
         // Verify state is still correct after all failures
         assert_eq!(obj1.borrow().children.len(), 1);
         assert_eq!(obj2.borrow().children.len(), 0);
-        assert!(Rc::ptr_eq(&Object3D::get_parent(&obj2).unwrap(), &obj1));
-        assert!(Object3D::get_parent(&obj1).is_none());
+        assert!(Rc::ptr_eq(&Object3D::parent(&obj2).unwrap(), &obj1));
+        assert!(Object3D::parent(&obj1).is_none());
     }
 }

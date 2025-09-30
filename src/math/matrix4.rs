@@ -208,4 +208,10 @@ impl Matrix4 {
         self.elements = m.elements;
         self
     }
+
+    pub fn clone(&self) -> Self {
+        Matrix4 {
+            elements: self.elements,
+        }
+    }
 }
