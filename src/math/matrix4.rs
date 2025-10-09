@@ -1,3 +1,5 @@
+use std::ops::Mul;
+
 use super::{Quaternion, Vector3};
 
 #[derive(Clone, Copy)]
@@ -202,5 +204,14 @@ impl Matrix4 {
         n42 * (n11 * n23 * n34 - n11 * n24 * n33 + n14 * n21 * n33 - n13 * n21 * n34 + n13 * n24 * n31 - n14 * n23 * n31) +
         n43 * (n11 * n24 * n32 - n11 * n22 * n34 - n14 * n21 * n32 + n12 * n21 * n34 + n14 * n22 * n31 - n12 * n24 * n31) +
         n44 * (-n13 * n22 * n31 - n11 * n23 * n32 + n11 * n22 * n33 + n13 * n21 * n32 - n12 * n21 * n33 + n12 * n23 * n31)
+    }
+}
+
+impl<'a> Mul<&'a Matrix4> for &'a Matrix4 {
+    type Output = Matrix4;
+    fn mul(self, rhs: &'a Matrix4) -> Matrix4 {
+        let mut result = Matrix4::new();
+        result.multiply_matrices(self, rhs);
+        result
     }
 }

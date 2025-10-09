@@ -124,16 +124,16 @@ impl Object3D {
     pub fn update_world_matrix(&self) {
         self.update_matrix();
 
-        let mut matrix = self.matrix.get();
-
         if let Some(parent) = self.parent() {
-            matrix.premultiply(&parent.world_matrix.get());
+            let world_matrix = &parent.world_matrix.get() * &self.matrix.get();
+            self.world_matrix.set(world_matrix);
+        } else {
+            let world_matrix = self.matrix.get();
+            self.world_matrix.set(world_matrix);
         }
 
-        self.world_matrix.set(matrix);
-
         for child in self.children().iter() {
-            Self::update_world_matrix(child);
+            child.update_world_matrix();
         }
     }
 }
