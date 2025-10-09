@@ -1,5 +1,6 @@
 use super::{Quaternion, Vector3};
 
+#[derive(Clone, Copy)]
 pub struct Matrix4 {
     pub elements: [f32; 16],
 }
@@ -149,8 +150,7 @@ impl Matrix4 {
         position.z = te[14];
 
         // scale the rotation part
-        let mut mat4_temp = Self::new();
-        mat4_temp.copy(self);
+        let mut mat4_temp = *self;
 
         let inv_sx = 1.0 / sx;
         let inv_sy = 1.0 / sy;
@@ -202,16 +202,5 @@ impl Matrix4 {
         n42 * (n11 * n23 * n34 - n11 * n24 * n33 + n14 * n21 * n33 - n13 * n21 * n34 + n13 * n24 * n31 - n14 * n23 * n31) +
         n43 * (n11 * n24 * n32 - n11 * n22 * n34 - n14 * n21 * n32 + n12 * n21 * n34 + n14 * n22 * n31 - n12 * n24 * n31) +
         n44 * (-n13 * n22 * n31 - n11 * n23 * n32 + n11 * n22 * n33 + n13 * n21 * n32 - n12 * n21 * n33 + n12 * n23 * n31)
-    }
-
-    pub fn copy(&mut self, m: &Matrix4) -> &mut Self {
-        self.elements = m.elements;
-        self
-    }
-
-    pub fn clone(&self) -> Self {
-        Matrix4 {
-            elements: self.elements,
-        }
     }
 }

@@ -1,9 +1,8 @@
 use super::Object3D;
-use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct Scene {
-    pub root: Rc<RefCell<Object3D>>,
+    pub root: Rc<Object3D>,
 }
 
 impl Scene {
@@ -13,15 +12,15 @@ impl Scene {
         }
     }
 
-    pub fn add(&self, child: &Rc<RefCell<Object3D>>) -> bool {
+    pub fn add(&self, child: &Rc<Object3D>) -> bool {
         Object3D::add(&self.root, child)
     }
 
-    pub fn remove(&self, child: &Rc<RefCell<Object3D>>) -> bool {
+    pub fn remove(&self, child: &Rc<Object3D>) -> bool {
         Object3D::remove(&self.root, child)
     }
 
     pub fn update_world_matrix(&self) {
-        Object3D::update_world_matrix(&self.root);
+        self.root.update_world_matrix();
     }
 }
