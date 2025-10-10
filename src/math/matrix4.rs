@@ -207,9 +207,9 @@ impl Matrix4 {
     }
 }
 
-impl<'a> Mul<&'a Matrix4> for &'a Matrix4 {
+impl Mul<&Matrix4> for &Matrix4 {
     type Output = Matrix4;
-    fn mul(self, rhs: &'a Matrix4) -> Matrix4 {
+    fn mul(self, rhs: &Matrix4) -> Matrix4 {
         let mut result = Matrix4::new();
         result.multiply_matrices(self, rhs);
         result

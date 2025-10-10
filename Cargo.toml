@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 fastrand = "2.0"
+winit = "0.30.12"
 
 [dev-dependencies]
 criterion = "0.7.0"
