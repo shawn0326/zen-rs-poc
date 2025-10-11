@@ -16,9 +16,9 @@ impl Matrix4 {
         0.0, 0.0, 0.0, 1.0,
     ];
 
-    pub fn new() -> Self {
+    pub fn new(elements: &[f32; 16]) -> Self {
         Matrix4 {
-            elements: Self::IDENTITY,
+            elements: *elements,
         }
     }
 
@@ -207,11 +207,44 @@ impl Matrix4 {
     }
 }
 
+impl Default for Matrix4 {
+    fn default() -> Self {
+        Self {
+            elements: Self::IDENTITY,
+        }
+    }
+}
+
 impl Mul<&Matrix4> for &Matrix4 {
     type Output = Matrix4;
+    #[inline]
     fn mul(self, rhs: &Matrix4) -> Matrix4 {
-        let mut result = Matrix4::new();
+        let mut result = Matrix4::default();
         result.multiply_matrices(self, rhs);
         result
+    }
+}
+
+impl Mul<Matrix4> for &Matrix4 {
+    type Output = Matrix4;
+    #[inline]
+    fn mul(self, rhs: Matrix4) -> Matrix4 {
+        self * &rhs
+    }
+}
+
+impl Mul<&Matrix4> for Matrix4 {
+    type Output = Self;
+    #[inline]
+    fn mul(self, rhs: &Matrix4) -> Self {
+        &self * rhs
+    }
+}
+
+impl Mul for Matrix4 {
+    type Output = Self;
+    #[inline]
+    fn mul(self, rhs: Self) -> Self {
+        &self * &rhs
     }
 }

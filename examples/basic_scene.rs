@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
+use pollster::block_on;
 use zen_rs_poc::{
     graphics::{Geometry, Material, Primitive},
+    math::Vector3,
     render::{RenderTarget, ScreenSurfaceLike},
     scene::{Object3D, Scene},
     wgpu::Renderer,
@@ -12,15 +14,66 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
-#[derive(Default)]
 struct App {
-    window: Option<Window>,
+    window: Window,
+    renderer: Option<Renderer>,
 }
 
-impl ApplicationHandler for App {
+impl App {
+    fn new(window: Window) -> Self {
+        println!("App created with window ID: {:?}", window.id());
+        Self {
+            window,
+            renderer: None,
+        }
+    }
+
+    async fn init(&mut self) {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        let surface = instance.create_surface(&self.window).unwrap();
+        let size = self.window.inner_size();
+
+        struct DummySurface;
+        impl ScreenSurfaceLike for DummySurface {
+            fn get_size(&self) -> (u32, u32) {
+                (800, 600)
+            }
+        }
+        let screen_render_target = RenderTarget::screen(Box::new(DummySurface), 300, 300);
+        println!("Screen RenderTarget: {:?}", screen_render_target);
+
+        let renderer = Renderer::new();
+        renderer
+            .init(&instance, &surface, size.width, size.height)
+            .await;
+
+        self.renderer = Some(renderer);
+    }
+
+    pub fn set_window_resized(&self, new_size: winit::dpi::PhysicalSize<u32>) {
+        println!("Window resized to: {:?}", new_size);
+    }
+}
+
+#[derive(Default)]
+struct AppHandler {
+    app: Option<App>,
+}
+
+impl ApplicationHandler for AppHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = Window::default_attributes().with_title("Basic Scene Example");
-        self.window = Some(event_loop.create_window(window_attributes).unwrap());
+        let window = event_loop.create_window(window_attributes).unwrap();
+
+        let mut app = App::new(window);
+
+        let _ = block_on(app.init());
+
+        self.app = Some(app);
 
         println!("Resumed");
     }
@@ -31,21 +84,19 @@ impl ApplicationHandler for App {
                 println!("The close button was pressed; stopping");
                 event_loop.exit();
             }
+            WindowEvent::Resized(size) => {
+                if size.width == 0 || size.height == 0 {
+                    return;
+                }
+
+                if let Some(app) = &self.app {
+                    app.set_window_resized(size);
+                }
+            }
             WindowEvent::RedrawRequested => {
-                // Redraw the application.
-                //
-                // It's preferable for applications that do not render continuously to render in
-                // this event rather than in AboutToWait, since rendering in here allows
-                // the program to gracefully handle redraws requested by the OS.
-
-                // Draw.
-
-                // Queue a RedrawRequested event.
-                //
-                // You only need to call this if you've determined that you need to redraw in
-                // applications which do not always need to. Applications that redraw continuously
-                // can render here instead.
-                self.window.as_ref().unwrap().request_redraw();
+                if let Some(_app) = &self.app {
+                    // Render here
+                }
             }
             _ => (),
         }
@@ -63,9 +114,8 @@ fn main() {
         println!("Create primitive: {:?}", primitive);
 
         let obj = Object3D::new();
-        let mut position = obj.position.get();
-        position.x = 10.0;
-        obj.position.set(position);
+        obj.position
+            .set(obj.position.get() + Vector3::new(1.0, 2.0, 3.0));
         obj.primitives.borrow_mut().push(primitive);
 
         scene.add(&obj);
@@ -99,23 +149,11 @@ fn main() {
         scene.root.children()[0].world_matrix.get().elements
     );
 
-    struct DummySurface;
-    impl ScreenSurfaceLike for DummySurface {
-        fn get_size(&self) -> (u32, u32) {
-            (800, 600)
-        }
-    }
-    let screen_render_target = RenderTarget::screen(Box::new(DummySurface), 300, 300);
-    println!("Screen RenderTarget: {:?}", screen_render_target);
-
-    let renderer = Renderer::new();
-    renderer.init();
-
-    let mut app = App::default();
+    let mut app_handler = AppHandler::default();
 
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
     event_loop
-        .run_app(&mut app)
+        .run_app(&mut app_handler)
         .expect("Failed to run event loop");
 }

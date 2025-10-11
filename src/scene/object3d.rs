@@ -21,12 +21,12 @@ impl Object3D {
     pub fn new() -> Rc<Self> {
         Rc::new(Object3D {
             name: String::new(),
-            position: Cell::new(Vector3::new()),
+            position: Cell::new(Vector3::default()),
             scale: Cell::new(Vector3::one()),
-            euler: Cell::new(Vector3::new()),
+            euler: Cell::new(Vector3::default()),
             quaternion: Cell::new(Quaternion::new()),
-            matrix: Cell::new(Matrix4::new()),
-            world_matrix: Cell::new(Matrix4::new()),
+            matrix: Cell::new(Matrix4::default()),
+            world_matrix: Cell::new(Matrix4::default()),
             children: RefCell::new(Vec::new()),
             parent: RefCell::new(Weak::new()),
             primitives: RefCell::new(Vec::new()),
@@ -125,11 +125,10 @@ impl Object3D {
         self.update_matrix();
 
         if let Some(parent) = self.parent() {
-            let world_matrix = &parent.world_matrix.get() * &self.matrix.get();
-            self.world_matrix.set(world_matrix);
+            self.world_matrix
+                .set(&parent.world_matrix.get() * &self.matrix.get());
         } else {
-            let world_matrix = self.matrix.get();
-            self.world_matrix.set(world_matrix);
+            self.world_matrix.set(self.matrix.get());
         }
 
         for child in self.children().iter() {
