@@ -7,7 +7,6 @@ use std::fmt::Debug;
 use offscreen::OffscreenRenderTarget;
 use screen::ScreenRenderTarget;
 use traits::RenderTargetLike;
-pub use traits::ScreenSurfaceLike;
 
 pub enum RenderTarget {
     Screen(ScreenRenderTarget),
@@ -15,8 +14,8 @@ pub enum RenderTarget {
 }
 
 impl RenderTarget {
-    pub fn screen(surface: Box<dyn ScreenSurfaceLike>, width: u32, height: u32) -> Self {
-        RenderTarget::Screen(ScreenRenderTarget::new(surface, width, height))
+    pub fn screen(width: u32, height: u32) -> Self {
+        RenderTarget::Screen(ScreenRenderTarget::new(width, height))
     }
 
     pub fn offscreen(width: u32, height: u32) -> Self {
@@ -65,13 +64,7 @@ mod tests {
 
     #[test]
     fn test_resize() {
-        struct DummySurface;
-        impl ScreenSurfaceLike for DummySurface {
-            fn get_size(&self) -> (u32, u32) {
-                (800, 600)
-            }
-        }
-        let mut target = RenderTarget::screen(Box::new(DummySurface), 800, 600);
+        let mut target = RenderTarget::screen(800, 600);
         assert_eq!(target.width(), 800);
         assert_eq!(target.height(), 600);
 

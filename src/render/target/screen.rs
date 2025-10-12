@@ -1,22 +1,15 @@
 use std::fmt::Debug;
 
-use super::traits::ScreenSurfaceLike;
-
 use super::traits::RenderTargetLike;
 
 pub struct ScreenRenderTarget {
-    pub surface: Box<dyn ScreenSurfaceLike>,
     pub width: u32,
     pub height: u32,
 }
 
 impl ScreenRenderTarget {
-    pub fn new(surface: Box<dyn ScreenSurfaceLike>, width: u32, height: u32) -> Self {
-        Self {
-            surface,
-            width,
-            height,
-        }
+    pub fn new(width: u32, height: u32) -> Self {
+        Self { width, height }
     }
 }
 

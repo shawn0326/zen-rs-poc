@@ -1,10 +1,10 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use pollster::block_on;
 use zen_rs_poc::{
     graphics::{Geometry, Material, Primitive},
     math::Vector3,
-    render::{RenderTarget, ScreenSurfaceLike},
+    render::RenderTarget,
     scene::{Object3D, Scene},
     wgpu::Renderer,
 };
@@ -14,64 +14,54 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
-struct App {
-    window: Window,
-    renderer: Option<Renderer>,
+struct App<'window> {
+    // window: Arc<Window>,
+    renderer: Renderer<'window>,
+    screen_render_target: RefCell<RenderTarget>,
 }
 
-impl App {
-    fn new(window: Window) -> Self {
-        println!("App created with window ID: {:?}", window.id());
-        Self {
-            window,
-            renderer: None,
-        }
-    }
+impl<'window> App<'window> {
+    async fn new(window: Arc<Window>) -> Self {
+        let size = window.inner_size();
+        let renderer = Renderer::new(window, size.width, size.height).await;
 
-    async fn init(&mut self) {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-
-        let surface = instance.create_surface(&self.window).unwrap();
-        let size = self.window.inner_size();
-
-        struct DummySurface;
-        impl ScreenSurfaceLike for DummySurface {
-            fn get_size(&self) -> (u32, u32) {
-                (800, 600)
-            }
-        }
-        let screen_render_target = RenderTarget::screen(Box::new(DummySurface), 300, 300);
+        let screen_render_target = RenderTarget::screen(300, 300);
         println!("Screen RenderTarget: {:?}", screen_render_target);
 
-        let renderer = Renderer::new();
-        renderer
-            .init(&instance, &surface, size.width, size.height)
-            .await;
-
-        self.renderer = Some(renderer);
+        Self {
+            // window,
+            renderer,
+            screen_render_target: RefCell::new(screen_render_target),
+        }
     }
 
     pub fn set_window_resized(&self, new_size: winit::dpi::PhysicalSize<u32>) {
-        println!("Window resized to: {:?}", new_size);
+        self.screen_render_target
+            .borrow_mut()
+            .set_size(new_size.width, new_size.height);
+
+        println!(
+            "Screen RenderTarget: {:?}",
+            self.screen_render_target.borrow()
+        );
+    }
+
+    pub fn render(&self) {
+        self.renderer.render(&self.screen_render_target.borrow());
     }
 }
 
 #[derive(Default)]
 struct AppHandler {
-    app: Option<App>,
+    app: Option<App<'static>>,
 }
 
 impl ApplicationHandler for AppHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = Window::default_attributes().with_title("Basic Scene Example");
-        let window = event_loop.create_window(window_attributes).unwrap();
+        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-        let mut app = App::new(window);
-
-        let _ = block_on(app.init());
+        let app = block_on(App::new(window));
 
         self.app = Some(app);
 
@@ -94,8 +84,8 @@ impl ApplicationHandler for AppHandler {
                 }
             }
             WindowEvent::RedrawRequested => {
-                if let Some(_app) = &self.app {
-                    // Render here
+                if let Some(app) = &self.app {
+                    app.render();
                 }
             }
             _ => (),
