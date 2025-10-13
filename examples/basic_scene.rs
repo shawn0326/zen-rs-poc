@@ -1,10 +1,10 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, sync::Arc};
 
 use pollster::block_on;
 use zen_rs_poc::{
     graphics::{Geometry, Material, Primitive},
     math::Vector3,
-    render::RenderTarget,
+    render::{RenderCollector, RenderTarget},
     scene::{Object3D, Scene},
     wgpu::Renderer,
 };
@@ -18,6 +18,8 @@ struct App<'window> {
     // window: Arc<Window>,
     renderer: Renderer<'window>,
     screen_render_target: RefCell<RenderTarget>,
+    render_collector: RenderCollector,
+    scene: Scene,
 }
 
 impl<'window> App<'window> {
@@ -28,10 +30,29 @@ impl<'window> App<'window> {
         let screen_render_target = RenderTarget::screen(300, 300);
         println!("Screen RenderTarget: {:?}", screen_render_target);
 
+        let render_collector = RenderCollector {};
+
+        let scene = Scene::new();
+
+        for i in 0..10 {
+            let geometry = Geometry::new();
+            let material = Material::new();
+            let primitive = Primitive::new(&geometry, &material);
+
+            let obj = Object3D::new();
+            obj.position
+                .set(obj.position.get() + Vector3::new(i as f32, 2.0, 3.0));
+            obj.primitives.borrow_mut().push(primitive);
+
+            scene.add(&obj);
+        }
+
         Self {
             // window,
             renderer,
             screen_render_target: RefCell::new(screen_render_target),
+            render_collector,
+            scene,
         }
     }
 
@@ -47,7 +68,10 @@ impl<'window> App<'window> {
     }
 
     pub fn render(&self) {
-        self.renderer.render(&self.screen_render_target.borrow());
+        self.scene.update_world_matrix();
+        let render_list = self.render_collector.collect(&self.scene);
+        self.renderer
+            .render(&render_list, &self.screen_render_target.borrow());
     }
 }
 
@@ -94,51 +118,6 @@ impl ApplicationHandler for AppHandler {
 }
 
 fn main() {
-    let scene = Scene::new();
-
-    {
-        let geometry = Geometry::new();
-        let material = Material::new();
-        let primitive = Primitive::new(&geometry, &material);
-
-        println!("Create primitive: {:?}", primitive);
-
-        let obj = Object3D::new();
-        obj.position
-            .set(obj.position.get() + Vector3::new(1.0, 2.0, 3.0));
-        obj.primitives.borrow_mut().push(primitive);
-
-        scene.add(&obj);
-    }
-
-    Object3D::traverse(&scene.root, &|o| {
-        let mut primitives = o.primitives.borrow_mut();
-        println!("Object3D {} has {} primitives", o.name, primitives.len());
-
-        if !primitives.is_empty() {
-            let primitive = &primitives[0];
-            let geometry = primitive.geometry();
-            let material = primitive.material();
-
-            println!("Geometry strong count: {}", Rc::strong_count(&geometry));
-            println!("Material strong count: {}", Rc::strong_count(&material));
-
-            primitives.clear();
-
-            println!("Geometry strong count: {}", Rc::strong_count(&geometry));
-            println!("Material strong count: {}", Rc::strong_count(&material));
-        }
-
-        println!("Object3D {} has {} primitives", o.name, primitives.len());
-    });
-
-    scene.update_world_matrix();
-
-    println!(
-        "Scene root world matrix: {:?}",
-        scene.root.children()[0].world_matrix.get().elements
-    );
-
     let mut app_handler = AppHandler::default();
 
     let event_loop = EventLoop::new().unwrap();

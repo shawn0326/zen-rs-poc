@@ -1,7 +1,7 @@
 use std::{cell::RefCell, sync::Arc};
 
 use super::pipelines::Pipelines;
-use crate::{render::RenderTarget, wgpu::targets::Targets};
+use crate::{render::RenderItem, render::RenderTarget, wgpu::targets::Targets};
 
 pub struct Renderer<'window> {
     device: Arc<wgpu::Device>,
@@ -71,7 +71,7 @@ impl<'window> Renderer<'window> {
         }
     }
 
-    pub fn render(&self, target: &RenderTarget) {
+    pub fn render(&self, render_list: &[RenderItem], target: &RenderTarget) {
         if let RenderTarget::Screen(screen_target) = target {
             if (screen_target.width != self.surface_config.borrow().width)
                 || (screen_target.height != self.surface_config.borrow().height)
@@ -96,9 +96,12 @@ impl<'window> Renderer<'window> {
                 .targets
                 .create_render_pass(&surface_texture, &mut encoder);
 
-            let pipeline = self.pipelines.get_pipeline();
-            render_pass.set_pipeline(pipeline); // 2.
-            render_pass.draw(0..3, 0..1); // 3.
+            #[allow(unused_variables)]
+            for render_item in render_list.iter() {
+                let pipeline = self.pipelines.get_pipeline();
+                render_pass.set_pipeline(pipeline); // 2.
+                render_pass.draw(0..3, 0..1); // 3.
+            }
         }
 
         self.queue.submit(Some(encoder.finish()));
