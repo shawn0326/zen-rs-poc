@@ -3,7 +3,11 @@ pub(super) struct Pipelines {
 }
 
 impl Pipelines {
-    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+        vertex_buffer_layout: [wgpu::VertexBufferLayout; 2],
+    ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
@@ -21,8 +25,8 @@ impl Pipelines {
             vertex: wgpu::VertexState {
                 module: &shader,
                 compilation_options: Default::default(),
-                entry_point: Some("vs_main"), // 1.
-                buffers: &[],                 // 2.
+                entry_point: Some("vs_main"),
+                buffers: &vertex_buffer_layout,
             },
             fragment: Some(wgpu::FragmentState {
                 // 3.

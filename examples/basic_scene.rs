@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::RefCell, collections::VecDeque, sync::Arc, time::Instant};
 
 use pollster::block_on;
 use zen_rs_poc::{
@@ -15,28 +15,30 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 
 struct App<'window> {
-    // window: Arc<Window>,
+    window: Arc<Window>,
     renderer: Renderer<'window>,
     screen_render_target: RefCell<RenderTarget>,
     render_collector: RenderCollector,
     scene: Scene,
+    frame_times: RefCell<VecDeque<Instant>>,
 }
 
 impl<'window> App<'window> {
     async fn new(window: Arc<Window>) -> Self {
         let size = window.inner_size();
-        let renderer = Renderer::new(window, size.width, size.height).await;
+        let renderer = Renderer::new(window.clone(), size.width, size.height).await;
 
-        let screen_render_target = RenderTarget::screen(300, 300);
+        let screen_render_target = RenderTarget::screen(size.width, size.height);
         println!("Screen RenderTarget: {:?}", screen_render_target);
 
         let render_collector = RenderCollector {};
 
         let scene = Scene::new();
 
-        for i in 0..10 {
-            let geometry = Geometry::new();
-            let material = Material::new();
+        let geometry = Geometry::new();
+        let material = Material::new();
+
+        for i in 0..2000 {
             let primitive = Primitive::new(&geometry, &material);
 
             let obj = Object3D::new();
@@ -48,11 +50,12 @@ impl<'window> App<'window> {
         }
 
         Self {
-            // window,
+            window,
             renderer,
             screen_render_target: RefCell::new(screen_render_target),
             render_collector,
             scene,
+            frame_times: RefCell::new(VecDeque::new()),
         }
     }
 
@@ -68,6 +71,30 @@ impl<'window> App<'window> {
     }
 
     pub fn render(&self) {
+        let now = Instant::now();
+
+        // 使用滑动窗口计算 FPS
+        let mut frame_times = self.frame_times.borrow_mut();
+        frame_times.push_back(now);
+
+        // 保持最近 60 帧的时间记录
+        while frame_times.len() > 60 {
+            frame_times.pop_front();
+        }
+
+        // 计算平均 FPS
+        if frame_times.len() > 1 {
+            let oldest = frame_times.front().unwrap();
+            let elapsed = now.duration_since(*oldest).as_secs_f64();
+            let fps = (frame_times.len() - 1) as f64 / elapsed;
+
+            // 每 10 帧更新一次标题
+            if frame_times.len() % 10 == 0 {
+                self.window
+                    .set_title(&format!("Basic Scene Example - FPS: {:.1}", fps));
+            }
+        }
+
         self.scene.update_world_matrix();
         let render_list = self.render_collector.collect(&self.scene);
         self.renderer
@@ -110,6 +137,8 @@ impl ApplicationHandler for AppHandler {
             WindowEvent::RedrawRequested => {
                 if let Some(app) = &self.app {
                     app.render();
+
+                    app.window.request_redraw();
                 }
             }
             _ => (),

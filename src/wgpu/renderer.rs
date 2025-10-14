@@ -1,7 +1,7 @@
 use std::{cell::RefCell, sync::Arc};
 
-use super::pipelines::Pipelines;
-use crate::{render::RenderItem, render::RenderTarget, wgpu::targets::Targets};
+use super::{geometries::Geometries, pipelines::Pipelines, targets::Targets};
+use crate::render::{RenderItem, RenderTarget};
 
 pub struct Renderer<'window> {
     device: Arc<wgpu::Device>,
@@ -10,6 +10,7 @@ pub struct Renderer<'window> {
     surface_config: RefCell<wgpu::SurfaceConfiguration>,
     pipelines: Pipelines,
     targets: Targets,
+    geometries: Geometries,
 }
 
 impl<'window> Renderer<'window> {
@@ -58,7 +59,8 @@ impl<'window> Renderer<'window> {
         };
         surface.configure(&device, &config);
 
-        let pipelines = Pipelines::new(&device, config.format);
+        let geometries = Geometries::new(&device);
+        let pipelines = Pipelines::new(&device, config.format, Geometries::desc());
         let targets = Targets::new();
 
         Self {
@@ -68,6 +70,7 @@ impl<'window> Renderer<'window> {
             surface_config: RefCell::new(config),
             pipelines,
             targets,
+            geometries,
         }
     }
 
@@ -99,8 +102,14 @@ impl<'window> Renderer<'window> {
             #[allow(unused_variables)]
             for render_item in render_list.iter() {
                 let pipeline = self.pipelines.get_pipeline();
-                render_pass.set_pipeline(pipeline); // 2.
-                render_pass.draw(0..3, 0..1); // 3.
+                render_pass.set_pipeline(pipeline);
+                render_pass.set_vertex_buffer(0, self.geometries.positions_buffer.slice(..));
+                render_pass.set_vertex_buffer(1, self.geometries.colors_buffer.slice(..));
+                render_pass.set_index_buffer(
+                    self.geometries.index_buffer.slice(..),
+                    wgpu::IndexFormat::Uint16,
+                );
+                render_pass.draw_indexed(0..self.geometries.num_indices, 0, 0..1);
             }
         }
 
