@@ -1,6 +1,5 @@
-use std::ops::Mul;
-
 use super::{Quaternion, Vector3};
+use std::ops::Mul;
 
 #[derive(Clone, Copy)]
 pub struct Matrix4 {

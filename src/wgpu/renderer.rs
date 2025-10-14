@@ -1,7 +1,6 @@
-use std::{cell::RefCell, sync::Arc};
-
 use super::{geometries::Geometries, pipelines::Pipelines, targets::Targets};
 use crate::render::{RenderItem, RenderTarget};
+use std::{cell::RefCell, sync::Arc};
 
 pub struct Renderer<'window> {
     device: Arc<wgpu::Device>,
@@ -34,6 +33,8 @@ impl<'window> Renderer<'window> {
             })
             .await
             .unwrap();
+
+        println!("{:?}", adapter.get_info());
 
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {

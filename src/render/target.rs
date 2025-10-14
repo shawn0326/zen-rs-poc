@@ -1,11 +1,9 @@
 mod offscreen;
 mod screen;
 mod traits;
-
-use std::fmt::Debug;
-
 use offscreen::OffscreenRenderTarget;
 use screen::ScreenRenderTarget;
+use std::fmt::Debug;
 use traits::RenderTargetLike;
 
 pub enum RenderTarget {
