@@ -1,12 +1,11 @@
 use super::{geometries::Geometries, pipelines::Pipelines, targets::Targets};
 use crate::render::{RenderItem, RenderTarget};
-use std::{cell::RefCell, sync::Arc};
 
 pub struct Renderer<'window> {
-    device: Arc<wgpu::Device>,
-    queue: Arc<wgpu::Queue>,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
     surface: wgpu::Surface<'window>,
-    surface_config: RefCell<wgpu::SurfaceConfiguration>,
+    surface_config: wgpu::SurfaceConfiguration,
     pipelines: Pipelines,
     targets: Targets,
     geometries: Geometries,
@@ -14,18 +13,11 @@ pub struct Renderer<'window> {
 
 impl<'window> Renderer<'window> {
     pub async fn new(
-        target: impl Into<wgpu::SurfaceTarget<'window>>,
-        width: u32,
-        height: u32,
+        instance: &wgpu::Instance,
+        surface: wgpu::Surface<'window>,
+        (width, height): (u32, u32),
     ) -> Self {
-        let context = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
-
-        let surface = context.create_surface(target).unwrap();
-
-        let adapter = context
+        let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
@@ -48,7 +40,7 @@ impl<'window> Renderer<'window> {
             .unwrap();
 
         let caps = surface.get_capabilities(&adapter);
-        let config = wgpu::SurfaceConfiguration {
+        let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: caps.formats[0],
             width: width.max(1),
@@ -58,32 +50,31 @@ impl<'window> Renderer<'window> {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
-        surface.configure(&device, &config);
+        surface.configure(&device, &surface_config);
 
         let geometries = Geometries::new(&device);
-        let pipelines = Pipelines::new(&device, config.format, Geometries::desc());
+        let pipelines = Pipelines::new(&device, surface_config.format, Geometries::desc());
         let targets = Targets::new();
 
         Self {
-            device: Arc::new(device),
-            queue: Arc::new(queue),
+            device,
+            queue,
             surface,
-            surface_config: RefCell::new(config),
+            surface_config,
             pipelines,
             targets,
             geometries,
         }
     }
 
-    pub fn render(&self, render_list: &[RenderItem], target: &RenderTarget) {
+    pub fn render(&mut self, render_list: &[RenderItem], target: &RenderTarget) {
         if let RenderTarget::Screen(screen_target) = target {
-            if (screen_target.width != self.surface_config.borrow().width)
-                || (screen_target.height != self.surface_config.borrow().height)
+            if (screen_target.width != self.surface_config.width)
+                || (screen_target.height != self.surface_config.height)
             {
-                self.surface_config.borrow_mut().width = screen_target.width.max(1);
-                self.surface_config.borrow_mut().height = screen_target.height.max(1);
-                self.surface
-                    .configure(&self.device, &self.surface_config.borrow());
+                self.surface_config.width = screen_target.width.max(1);
+                self.surface_config.height = screen_target.height.max(1);
+                self.surface.configure(&self.device, &self.surface_config);
             }
         }
 

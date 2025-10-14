@@ -1,6 +1,9 @@
-use std::{cell::RefCell, collections::VecDeque, sync::Arc, time::Instant};
-
 use pollster::block_on;
+use std::{collections::VecDeque, sync::Arc, time::Instant};
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::window::{Window, WindowId};
 use zen_rs_poc::{
     graphics::{Geometry, Material, Primitive},
     math::Vector3,
@@ -9,24 +12,26 @@ use zen_rs_poc::{
     wgpu::Renderer,
 };
 
-use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::window::{Window, WindowId};
-
 struct App<'window> {
     window: Arc<Window>,
     renderer: Renderer<'window>,
-    screen_render_target: RefCell<RenderTarget>,
+    screen_render_target: RenderTarget,
     render_collector: RenderCollector,
     scene: Scene,
-    frame_times: RefCell<VecDeque<Instant>>,
+    frame_times: VecDeque<Instant>,
 }
 
 impl<'window> App<'window> {
     async fn new(window: Arc<Window>) -> Self {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
         let size = window.inner_size();
-        let renderer = Renderer::new(window.clone(), size.width, size.height).await;
+        let surface = instance.create_surface(window.clone()).unwrap();
+
+        let renderer = Renderer::new(&instance, surface, (size.width, size.height)).await;
 
         let screen_render_target = RenderTarget::screen(size.width, size.height);
         println!("Screen RenderTarget: {:?}", screen_render_target);
@@ -52,53 +57,46 @@ impl<'window> App<'window> {
         Self {
             window,
             renderer,
-            screen_render_target: RefCell::new(screen_render_target),
+            screen_render_target,
             render_collector,
             scene,
-            frame_times: RefCell::new(VecDeque::new()),
+            frame_times: VecDeque::new(),
         }
     }
 
-    pub fn set_window_resized(&self, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn set_window_resized(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.screen_render_target
-            .borrow_mut()
             .set_size(new_size.width, new_size.height);
 
-        println!(
-            "Screen RenderTarget: {:?}",
-            self.screen_render_target.borrow()
-        );
+        println!("Screen RenderTarget: {:?}", self.screen_render_target);
     }
 
-    pub fn render(&self) {
+    pub fn update_fps_stats(&mut self) {
         let now = Instant::now();
 
-        // 使用滑动窗口计算 FPS
-        let mut frame_times = self.frame_times.borrow_mut();
-        frame_times.push_back(now);
+        self.frame_times.push_back(now);
 
-        // 保持最近 60 帧的时间记录
-        while frame_times.len() > 60 {
-            frame_times.pop_front();
+        while self.frame_times.len() > 60 {
+            self.frame_times.pop_front();
         }
 
-        // 计算平均 FPS
-        if frame_times.len() > 1 {
-            let oldest = frame_times.front().unwrap();
+        if self.frame_times.len() > 1 {
+            let oldest = self.frame_times.front().unwrap();
             let elapsed = now.duration_since(*oldest).as_secs_f64();
-            let fps = (frame_times.len() - 1) as f64 / elapsed;
+            let fps = (self.frame_times.len() - 1) as f64 / elapsed;
 
-            // 每 10 帧更新一次标题
-            if frame_times.len() % 10 == 0 {
+            if self.frame_times.len() % 10 == 0 {
                 self.window
                     .set_title(&format!("Basic Scene Example - FPS: {:.1}", fps));
             }
         }
+    }
 
+    pub fn render(&mut self) {
         self.scene.update_world_matrix();
         let render_list = self.render_collector.collect(&self.scene);
         self.renderer
-            .render(&render_list, &self.screen_render_target.borrow());
+            .render(&render_list, &self.screen_render_target);
     }
 }
 
@@ -113,6 +111,8 @@ impl ApplicationHandler for AppHandler {
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
         let app = block_on(App::new(window));
+
+        app.window.request_redraw();
 
         self.app = Some(app);
 
@@ -130,14 +130,14 @@ impl ApplicationHandler for AppHandler {
                     return;
                 }
 
-                if let Some(app) = &self.app {
+                if let Some(app) = &mut self.app {
                     app.set_window_resized(size);
                 }
             }
             WindowEvent::RedrawRequested => {
-                if let Some(app) = &self.app {
+                if let Some(app) = &mut self.app {
+                    app.update_fps_stats();
                     app.render();
-
                     app.window.request_redraw();
                 }
             }
