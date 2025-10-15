@@ -1,5 +1,6 @@
 use super::{
     bindgroups::BindGroups, geometries::Geometries, pipelines::Pipelines, targets::Targets,
+    textures::Textures,
 };
 use crate::{
     render::{RenderItem, RenderTarget},
@@ -15,6 +16,7 @@ pub struct Renderer<'window> {
     targets: Targets,
     geometries: Geometries,
     bindgroups: BindGroups,
+    textures: Textures,
 }
 
 impl<'window> Renderer<'window> {
@@ -59,9 +61,10 @@ impl<'window> Renderer<'window> {
         surface.configure(&device, &surface_config);
 
         let geometries = Geometries::new(&device);
-        let pipelines = Pipelines::new(&device, surface_config.format, Geometries::desc());
+        let pipelines = Pipelines::new(&device, surface_config.format, &Geometries::desc());
         let targets = Targets::new();
         let bindgroups = BindGroups::new();
+        let textures = Textures::new();
 
         Self {
             device,
@@ -72,6 +75,7 @@ impl<'window> Renderer<'window> {
             targets,
             geometries,
             bindgroups,
+            textures,
         }
     }
 
@@ -99,10 +103,19 @@ impl<'window> Renderer<'window> {
                 .targets
                 .create_render_pass(&surface_texture, &mut encoder);
 
-            self.bindgroups.update(camera);
-
             #[allow(unused_variables)]
             for render_item in render_list.iter() {
+                if let Some(texture) = render_item.material.borrow().texture() {
+                    self.textures
+                        .set_texture(&self.device, &self.queue, &texture);
+                    if let Some(gpu_texture) = self.textures.get_texture(&texture) {
+                        #[allow(unused_variables)]
+                        let _ = &gpu_texture.texture;
+                    };
+                }
+
+                self.bindgroups.update(&render_item.material, camera);
+
                 let pipeline = self.pipelines.get_pipeline();
                 render_pass.set_pipeline(pipeline);
                 render_pass.set_vertex_buffer(0, self.geometries.positions_buffer.slice(..));

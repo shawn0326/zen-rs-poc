@@ -6,7 +6,7 @@ impl Pipelines {
     pub fn new(
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
-        vertex_buffer_layout: [wgpu::VertexBufferLayout; 2],
+        vertex_buffer_layout: &[wgpu::VertexBufferLayout],
     ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -26,7 +26,7 @@ impl Pipelines {
                 module: &shader,
                 compilation_options: Default::default(),
                 entry_point: Some("vs_main"),
-                buffers: &vertex_buffer_layout,
+                buffers: vertex_buffer_layout,
             },
             fragment: Some(wgpu::FragmentState {
                 // 3.

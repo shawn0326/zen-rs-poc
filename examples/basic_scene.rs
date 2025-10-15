@@ -1,3 +1,4 @@
+use image::GenericImageView;
 use pollster::block_on;
 use std::{collections::VecDeque, sync::Arc, time::Instant};
 use winit::application::ApplicationHandler;
@@ -6,7 +7,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 use zen_rs_poc::scene::Camera;
 use zen_rs_poc::{
-    graphics::{Geometry, Material, Primitive},
+    graphics::{Geometry, Material, Primitive, Texture},
     math::Vec3,
     render::{RenderCollector, RenderTarget},
     scene::{Object3D, Scene},
@@ -52,8 +53,17 @@ impl<'window> App<'window> {
             far: 100.0,
         };
 
+        let diffuse_bytes = include_bytes!("../assets/textures/logo.jpg");
+        let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
+
+        let texture = Texture::from_data(
+            diffuse_image.to_rgba8().into_raw(),
+            diffuse_image.dimensions(),
+        );
+
         let geometry = Geometry::new();
         let material = Material::new();
+        material.borrow_mut().set_texture(texture);
 
         for i in 0..2000 {
             let primitive = Primitive::new(&geometry, &material);
