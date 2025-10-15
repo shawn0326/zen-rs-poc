@@ -6,7 +6,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
 use zen_rs_poc::{
     graphics::{Geometry, Material, Primitive},
-    math::Vector3,
+    math::Vec3,
     render::{RenderCollector, RenderTarget},
     scene::{Object3D, Scene},
     wgpu::Renderer,
@@ -48,7 +48,7 @@ impl<'window> App<'window> {
 
             let obj = Object3D::new();
             obj.position
-                .set(obj.position.get() + Vector3::new(i as f32, 2.0, 3.0));
+                .set(obj.position.get() + Vec3::new(i as f32, 2.0, 3.0));
             obj.primitives.borrow_mut().push(primitive);
 
             scene.add(&obj);

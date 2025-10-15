@@ -1,17 +1,17 @@
 use crate::graphics::Primitive;
-use crate::math::{Matrix4, Quaternion, Vector3};
+use crate::math::{EulerRot, Mat4, Quat, Vec3};
 use std::cell::{Cell, Ref, RefCell};
 use std::ptr;
 use std::rc::{Rc, Weak};
 
 pub struct Object3D {
     pub name: String,
-    pub position: Cell<Vector3>,
-    pub scale: Cell<Vector3>,
-    pub euler: Cell<Vector3>,
-    pub quaternion: Cell<Quaternion>,
-    pub matrix: Cell<Matrix4>,
-    pub world_matrix: Cell<Matrix4>,
+    pub position: Cell<Vec3>,
+    pub scale: Cell<Vec3>,
+    pub euler: Cell<EulerRot>,
+    pub quaternion: Cell<Quat>,
+    pub matrix: Cell<Mat4>,
+    pub world_matrix: Cell<Mat4>,
     children: RefCell<Vec<Rc<Object3D>>>,
     parent: RefCell<Weak<Object3D>>,
     pub primitives: RefCell<Vec<Primitive>>,
@@ -21,12 +21,12 @@ impl Object3D {
     pub fn new() -> Rc<Self> {
         Rc::new(Object3D {
             name: String::new(),
-            position: Cell::new(Vector3::default()),
-            scale: Cell::new(Vector3::one()),
-            euler: Cell::new(Vector3::default()),
-            quaternion: Cell::new(Quaternion::new()),
-            matrix: Cell::new(Matrix4::default()),
-            world_matrix: Cell::new(Matrix4::default()),
+            position: Cell::new(Vec3::ZERO),
+            scale: Cell::new(Vec3::ONE),
+            euler: Cell::new(EulerRot::XYZ),
+            quaternion: Cell::new(Quat::IDENTITY),
+            matrix: Cell::new(Mat4::IDENTITY),
+            world_matrix: Cell::new(Mat4::IDENTITY),
             children: RefCell::new(Vec::new()),
             parent: RefCell::new(Weak::new()),
             primitives: RefCell::new(Vec::new()),
@@ -112,12 +112,12 @@ impl Object3D {
     }
 
     pub fn update_matrix(&self) {
-        let mut matrix = self.matrix.get();
-        matrix.compose(
-            &self.position.get(),
-            &self.quaternion.get(),
-            &self.scale.get(),
+        let matrix = Mat4::from_scale_rotation_translation(
+            self.scale.get(),
+            self.quaternion.get(),
+            self.position.get(),
         );
+
         self.matrix.set(matrix);
     }
 
@@ -126,7 +126,7 @@ impl Object3D {
 
         if let Some(parent) = self.parent() {
             self.world_matrix
-                .set(&parent.world_matrix.get() * &self.matrix.get());
+                .set(parent.world_matrix.get() * self.matrix.get());
         } else {
             self.world_matrix.set(self.matrix.get());
         }

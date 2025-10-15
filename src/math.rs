@@ -1,6 +1,4 @@
-mod matrix4;
-mod quat;
-mod vector3;
-pub use matrix4::Matrix4;
-pub use quat::Quaternion;
-pub use vector3::Vector3;
+pub type Vec3 = glam::Vec3;
+pub type Quat = glam::Quat;
+pub type EulerRot = glam::EulerRot;
+pub type Mat4 = glam::Mat4;
