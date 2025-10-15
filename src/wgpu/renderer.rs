@@ -1,5 +1,10 @@
-use super::{geometries::Geometries, pipelines::Pipelines, targets::Targets};
-use crate::render::{RenderItem, RenderTarget};
+use super::{
+    bindgroups::BindGroups, geometries::Geometries, pipelines::Pipelines, targets::Targets,
+};
+use crate::{
+    render::{RenderItem, RenderTarget},
+    scene::Camera,
+};
 
 pub struct Renderer<'window> {
     device: wgpu::Device,
@@ -9,6 +14,7 @@ pub struct Renderer<'window> {
     pipelines: Pipelines,
     targets: Targets,
     geometries: Geometries,
+    bindgroups: BindGroups,
 }
 
 impl<'window> Renderer<'window> {
@@ -55,6 +61,7 @@ impl<'window> Renderer<'window> {
         let geometries = Geometries::new(&device);
         let pipelines = Pipelines::new(&device, surface_config.format, Geometries::desc());
         let targets = Targets::new();
+        let bindgroups = BindGroups::new();
 
         Self {
             device,
@@ -64,10 +71,11 @@ impl<'window> Renderer<'window> {
             pipelines,
             targets,
             geometries,
+            bindgroups,
         }
     }
 
-    pub fn render(&mut self, render_list: &[RenderItem], target: &RenderTarget) {
+    pub fn render(&mut self, render_list: &[RenderItem], camera: &Camera, target: &RenderTarget) {
         if let RenderTarget::Screen(screen_target) = target {
             if (screen_target.width != self.surface_config.width)
                 || (screen_target.height != self.surface_config.height)
@@ -90,6 +98,8 @@ impl<'window> Renderer<'window> {
             let mut render_pass = self
                 .targets
                 .create_render_pass(&surface_texture, &mut encoder);
+
+            self.bindgroups.update(camera);
 
             #[allow(unused_variables)]
             for render_item in render_list.iter() {

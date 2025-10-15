@@ -4,6 +4,7 @@ use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
+use zen_rs_poc::scene::Camera;
 use zen_rs_poc::{
     graphics::{Geometry, Material, Primitive},
     math::Vec3,
@@ -18,6 +19,7 @@ struct App<'window> {
     screen_render_target: RenderTarget,
     render_collector: RenderCollector,
     scene: Scene,
+    camera: Camera,
     frame_times: VecDeque<Instant>,
 }
 
@@ -40,6 +42,16 @@ impl<'window> App<'window> {
 
         let scene = Scene::new();
 
+        let camera = Camera {
+            eye: (0.0, 1.0, 2.0).into(),
+            target: (0.0, 0.0, 0.0).into(),
+            up: Vec3::Y,
+            aspect: size.width as f32 / size.height as f32,
+            fovy: 45.0,
+            near: 0.1,
+            far: 100.0,
+        };
+
         let geometry = Geometry::new();
         let material = Material::new();
 
@@ -60,6 +72,7 @@ impl<'window> App<'window> {
             screen_render_target,
             render_collector,
             scene,
+            camera,
             frame_times: VecDeque::new(),
         }
     }
@@ -96,7 +109,7 @@ impl<'window> App<'window> {
         self.scene.update_world_matrix();
         let render_list = self.render_collector.collect(&self.scene);
         self.renderer
-            .render(&render_list, &self.screen_render_target);
+            .render(&render_list, &self.camera, &self.screen_render_target);
     }
 }
 

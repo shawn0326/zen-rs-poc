@@ -1,3 +1,4 @@
+mod bindgroups;
 mod geometries;
 mod pipelines;
 mod renderer;
