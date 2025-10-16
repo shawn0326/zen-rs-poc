@@ -4,12 +4,42 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 pub(super) struct Textures {
+    default_gpu_texture: GpuTexture,
     map: HashMap<TextureId, GpuTexture>,
 }
 
 impl Textures {
-    pub fn new() -> Self {
+    pub fn new(device: &wgpu::Device) -> Self {
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Texture"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+
+        let diffuse_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
         Self {
+            default_gpu_texture: GpuTexture {
+                texture,
+                sampler: diffuse_sampler,
+            },
             map: HashMap::new(),
         }
     }
@@ -60,21 +90,36 @@ impl Textures {
                     size,
                 );
 
+                let diffuse_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+                    address_mode_u: wgpu::AddressMode::ClampToEdge,
+                    address_mode_v: wgpu::AddressMode::ClampToEdge,
+                    address_mode_w: wgpu::AddressMode::ClampToEdge,
+                    mag_filter: wgpu::FilterMode::Linear,
+                    min_filter: wgpu::FilterMode::Nearest,
+                    mipmap_filter: wgpu::FilterMode::Nearest,
+                    ..Default::default()
+                });
+
                 self.map.insert(
                     texture_id,
                     GpuTexture {
                         texture: wgpu_texture,
+                        sampler: diffuse_sampler,
                     },
                 );
             }
         }
     }
 
-    pub fn get_texture(&self, texture: &Rc<RefCell<Texture>>) -> Option<&GpuTexture> {
-        self.map.get(&texture.borrow().id())
+    pub fn get_texture(&self, texture: &Rc<RefCell<Texture>>) -> &GpuTexture {
+        if let Some(gpu_texture) = self.map.get(&texture.borrow().id()) {
+            return gpu_texture;
+        }
+        &self.default_gpu_texture
     }
 }
 
 pub(super) struct GpuTexture {
     pub texture: wgpu::Texture,
+    pub sampler: wgpu::Sampler,
 }

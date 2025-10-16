@@ -61,10 +61,10 @@ impl<'window> Renderer<'window> {
         surface.configure(&device, &surface_config);
 
         let geometries = Geometries::new(&device);
-        let pipelines = Pipelines::new(&device, surface_config.format, &Geometries::desc());
+        let pipelines = Pipelines::new();
         let targets = Targets::new();
         let bindgroups = BindGroups::new();
-        let textures = Textures::new();
+        let textures = Textures::new(&device);
 
         Self {
             device,
@@ -105,21 +105,27 @@ impl<'window> Renderer<'window> {
 
             #[allow(unused_variables)]
             for render_item in render_list.iter() {
-                if let Some(texture) = render_item.material.borrow().texture() {
-                    self.textures
-                        .set_texture(&self.device, &self.queue, &texture);
-                    if let Some(gpu_texture) = self.textures.get_texture(&texture) {
-                        #[allow(unused_variables)]
-                        let _ = &gpu_texture.texture;
-                    };
-                }
+                let gpu_bindgroup = self.bindgroups.set_bindgroup(
+                    &self.device,
+                    &self.queue,
+                    &render_item.material,
+                    &mut self.textures,
+                    camera,
+                );
 
-                self.bindgroups.update(&render_item.material, camera);
+                let pipeline = self.pipelines.set_pipeline(
+                    &self.device,
+                    &render_item.material,
+                    self.surface_config.format,
+                    &Geometries::desc(),
+                    &gpu_bindgroup.layout,
+                );
 
-                let pipeline = self.pipelines.get_pipeline();
                 render_pass.set_pipeline(pipeline);
+                render_pass.set_bind_group(0, &gpu_bindgroup.bind_group, &[]);
                 render_pass.set_vertex_buffer(0, self.geometries.positions_buffer.slice(..));
-                render_pass.set_vertex_buffer(1, self.geometries.colors_buffer.slice(..));
+                render_pass.set_vertex_buffer(1, self.geometries.tex_coords_buffer.slice(..));
+                render_pass.set_vertex_buffer(2, self.geometries.colors_buffer.slice(..));
                 render_pass.set_index_buffer(
                     self.geometries.index_buffer.slice(..),
                     wgpu::IndexFormat::Uint16,

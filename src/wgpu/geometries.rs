@@ -18,14 +18,20 @@ const POSITIONS: &[f32] = &[
     0.0,
 ];
 
+const TEX_COORDS: &[f32] = &[
+    0.4131759, 0.00759614, 0.00486594, 0.43041353, 0.28081452, 0.949397, 0.85966998, 0.8473291,
+    0.9414737, 0.2652641,
+];
+
 const COLORS: &[f32] = &[
-    0.5, 0.0, 0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.5,
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
 ];
 
 const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
 
 pub(super) struct Geometries {
     pub positions_buffer: wgpu::Buffer,
+    pub tex_coords_buffer: wgpu::Buffer,
     pub colors_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub num_indices: u32,
@@ -36,6 +42,11 @@ impl Geometries {
         let positions_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(POSITIONS),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let tex_coords_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(TEX_COORDS),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let colors_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -52,13 +63,14 @@ impl Geometries {
 
         Self {
             positions_buffer,
+            tex_coords_buffer,
             colors_buffer,
             index_buffer,
             num_indices,
         }
     }
 
-    pub fn desc<'a>() -> [wgpu::VertexBufferLayout<'a>; 2] {
+    pub fn desc<'a>() -> [wgpu::VertexBufferLayout<'a>; 3] {
         [
             // Buffer 0: positions
             wgpu::VertexBufferLayout {
@@ -70,13 +82,23 @@ impl Geometries {
                     format: wgpu::VertexFormat::Float32x3,
                 }],
             },
-            // Buffer 1: colors
+            // Buffer 1: texture coordinates
+            wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &[wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
+                }],
+            },
+            // Buffer 2: colors
             wgpu::VertexBufferLayout {
                 array_stride: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: &[wgpu::VertexAttribute {
                     offset: 0,
-                    shader_location: 1,
+                    shader_location: 2,
                     format: wgpu::VertexFormat::Float32x3,
                 }],
             },
