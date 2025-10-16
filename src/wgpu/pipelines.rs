@@ -19,7 +19,7 @@ impl Pipelines {
         material: &Rc<RefCell<Material>>,
         format: wgpu::TextureFormat,
         vertex_buffer_layout: &[wgpu::VertexBufferLayout],
-        bindgroup_layout: &wgpu::BindGroupLayout,
+        bindgroup_layout: &[&wgpu::BindGroupLayout],
     ) -> &wgpu::RenderPipeline {
         let material = material.borrow();
 
@@ -30,13 +30,15 @@ impl Pipelines {
             std::collections::hash_map::Entry::Vacant(v) => {
                 let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("Shader"),
-                    source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+                    source: wgpu::ShaderSource::Wgsl(
+                        include_str!("shader_with_texture.wgsl").into(),
+                    ),
                 });
 
                 let pipeline_layout =
                     device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                         label: Some("Render Pipeline Layout"),
-                        bind_group_layouts: &[bindgroup_layout],
+                        bind_group_layouts: bindgroup_layout,
                         push_constant_ranges: &[],
                     });
 

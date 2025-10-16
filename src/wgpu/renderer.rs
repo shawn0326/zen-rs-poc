@@ -63,7 +63,7 @@ impl<'window> Renderer<'window> {
         let geometries = Geometries::new(&device);
         let pipelines = Pipelines::new();
         let targets = Targets::new();
-        let bindgroups = BindGroups::new();
+        let bindgroups = BindGroups::new(&device);
         let textures = Textures::new(&device);
 
         Self {
@@ -98,19 +98,19 @@ impl<'window> Renderer<'window> {
 
         let surface_texture = self.surface.get_current_texture().unwrap();
 
+        self.bindgroups.update_camera(&self.queue, camera);
+
         {
             let mut render_pass = self
                 .targets
                 .create_render_pass(&surface_texture, &mut encoder);
 
-            #[allow(unused_variables)]
             for render_item in render_list.iter() {
-                let gpu_bindgroup = self.bindgroups.set_bindgroup(
+                let _ = self.bindgroups.set_bindgroup(
                     &self.device,
                     &self.queue,
                     &render_item.material,
                     &mut self.textures,
-                    camera,
                 );
 
                 let pipeline = self.pipelines.set_pipeline(
@@ -118,11 +118,28 @@ impl<'window> Renderer<'window> {
                     &render_item.material,
                     self.surface_config.format,
                     &Geometries::desc(),
-                    &gpu_bindgroup.layout,
+                    &[
+                        &self.bindgroups.get_camera_bindgroup().layout,
+                        &self.bindgroups.get_bindgroup(&render_item.material).layout,
+                    ],
                 );
 
                 render_pass.set_pipeline(pipeline);
-                render_pass.set_bind_group(0, &gpu_bindgroup.bind_group, &[]);
+
+                render_pass.set_bind_group(
+                    0,
+                    &self.bindgroups.get_camera_bindgroup().bindgroup,
+                    &[],
+                );
+                render_pass.set_bind_group(
+                    1,
+                    &self
+                        .bindgroups
+                        .get_bindgroup(&render_item.material)
+                        .bindgroup,
+                    &[],
+                );
+
                 render_pass.set_vertex_buffer(0, self.geometries.positions_buffer.slice(..));
                 render_pass.set_vertex_buffer(1, self.geometries.tex_coords_buffer.slice(..));
                 render_pass.set_vertex_buffer(2, self.geometries.colors_buffer.slice(..));
@@ -130,6 +147,7 @@ impl<'window> Renderer<'window> {
                     self.geometries.index_buffer.slice(..),
                     wgpu::IndexFormat::Uint16,
                 );
+
                 render_pass.draw_indexed(0..self.geometries.num_indices, 0, 0..1);
             }
         }

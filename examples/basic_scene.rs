@@ -2,8 +2,9 @@ use image::GenericImageView;
 use pollster::block_on;
 use std::{collections::VecDeque, sync::Arc, time::Instant};
 use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
+use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 use zen_rs_poc::scene::Camera;
 use zen_rs_poc::{
@@ -65,7 +66,7 @@ impl<'window> App<'window> {
         let material = Material::new();
         material.borrow_mut().set_texture(texture);
 
-        for i in 0..2000 {
+        for i in 0..10000 {
             let primitive = Primitive::new(&geometry, &material);
 
             let obj = Object3D::new();
@@ -162,6 +163,38 @@ impl ApplicationHandler for AppHandler {
                     app.update_fps_stats();
                     app.render();
                     app.window.request_redraw();
+                }
+            }
+            WindowEvent::KeyboardInput {
+                device_id: _,
+                event,
+                is_synthetic: _,
+            } => {
+                if let Some(app) = &mut self.app {
+                    let is_pressed = event.state == ElementState::Pressed;
+
+                    if !is_pressed {
+                        return;
+                    }
+
+                    match event.physical_key {
+                        PhysicalKey::Code(KeyCode::KeyW) | PhysicalKey::Code(KeyCode::ArrowUp) => {
+                            app.camera.eye.z -= 0.1;
+                        }
+                        PhysicalKey::Code(KeyCode::KeyA)
+                        | PhysicalKey::Code(KeyCode::ArrowLeft) => {
+                            app.camera.eye.x -= 0.1;
+                        }
+                        PhysicalKey::Code(KeyCode::KeyS)
+                        | PhysicalKey::Code(KeyCode::ArrowDown) => {
+                            app.camera.eye.z += 0.1;
+                        }
+                        PhysicalKey::Code(KeyCode::KeyD)
+                        | PhysicalKey::Code(KeyCode::ArrowRight) => {
+                            app.camera.eye.x += 0.1;
+                        }
+                        _ => (),
+                    }
                 }
             }
             _ => (),
