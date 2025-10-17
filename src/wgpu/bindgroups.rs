@@ -1,212 +1,191 @@
 use super::textures::Textures;
 use crate::{
     graphics::{Material, MaterialId},
-    // render::RenderItem,
     scene::Camera,
 };
 use std::{
-    cell::RefCell,
     collections::{HashMap, hash_map::Entry},
-    rc::Rc,
+    vec,
 };
 use wgpu::util::DeviceExt;
 
 pub(super) struct BindGroups {
-    camera_uniform: CameraUniform,
-    camera_buffer: wgpu::Buffer,
-    camera_bindgroup: GpuBindGroup,
-    map: HashMap<MaterialId, GpuBindGroup>,
+    gpu_global_bind_group: GpuGlobalBindGroup,
+    map: HashMap<MaterialId, GpuMaterialBindGroup>,
 }
 
 impl BindGroups {
     pub fn new(device: &wgpu::Device) -> Self {
-        let camera_uniform = CameraUniform::new();
-
-        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Camera Buffer"),
-            contents: bytemuck::cast_slice(&[camera_uniform]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let camera_bindgroup_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX, // 1
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false, // 2
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("camera_bind_group_layout"),
-            });
-
-        let camera_bindgroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_bindgroup_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: camera_buffer.as_entire_binding(),
-            }],
-            label: Some("camera_bind_group"),
-        });
+        let gpu_global_bind_group = GpuGlobalBindGroup::new(device);
 
         Self {
-            camera_uniform,
-            camera_buffer,
-            camera_bindgroup: GpuBindGroup {
-                bindgroup: camera_bindgroup,
-                layout: camera_bindgroup_layout,
-            },
+            gpu_global_bind_group,
             map: HashMap::new(),
         }
     }
 
-    pub fn update_camera(&mut self, queue: &wgpu::Queue, camera: &Camera) {
-        self.camera_uniform.update_view_proj(camera);
-        queue.write_buffer(
-            &self.camera_buffer,
-            0,
-            bytemuck::bytes_of(&self.camera_uniform),
-        );
+    pub fn get_global_bind_group(&self) -> &GpuGlobalBindGroup {
+        &self.gpu_global_bind_group
     }
 
-    pub fn get_camera_bindgroup(&self) -> &GpuBindGroup {
-        &self.camera_bindgroup
-    }
-
-    pub fn set_bindgroup(
+    pub fn get_material_bind_group(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        material: &Rc<RefCell<Material>>,
+        material: &Material,
         textures: &mut Textures,
-    ) -> &GpuBindGroup {
-        let material = material.borrow();
-
+    ) -> &GpuMaterialBindGroup {
         let material_id = material.id();
 
         match self.map.entry(material_id) {
             Entry::Occupied(o) => o.into_mut(),
             Entry::Vacant(v) => {
-                let gpu_bindgroup: GpuBindGroup;
+                let gpu_material_bind_group =
+                    GpuMaterialBindGroup::new(device, queue, textures, &*material);
 
-                if let Some(texture) = material.texture() {
-                    let gpu_texture = textures.get_gpu_texture(device, queue, &*texture.borrow());
-
-                    let texture_bindgroup_layout =
-                        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                            entries: &[
-                                wgpu::BindGroupLayoutEntry {
-                                    binding: 0,
-                                    visibility: wgpu::ShaderStages::FRAGMENT,
-                                    ty: gpu_texture.create_binding_type(),
-                                    count: None,
-                                },
-                                wgpu::BindGroupLayoutEntry {
-                                    binding: 1,
-                                    visibility: wgpu::ShaderStages::FRAGMENT,
-                                    // This should match the filterable field of the
-                                    // corresponding Texture entry above.
-                                    ty: wgpu::BindingType::Sampler(
-                                        gpu_texture.get_sampler_binding_type(),
-                                    ),
-                                    count: None,
-                                },
-                            ],
-                            label: Some("texture_bind_group_layout"),
-                        });
-
-                    let diffuse_bindgroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        layout: &texture_bindgroup_layout,
-                        entries: &[
-                            wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: wgpu::BindingResource::TextureView(
-                                    &gpu_texture.create_view(),
-                                ),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 1,
-                                resource: wgpu::BindingResource::Sampler(&gpu_texture.sampler),
-                            },
-                        ],
-                        label: Some("diffuse_bind_group"),
-                    });
-
-                    gpu_bindgroup = GpuBindGroup {
-                        bindgroup: diffuse_bindgroup,
-                        layout: texture_bindgroup_layout,
-                    };
-                } else {
-                    let bind_group_layout =
-                        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                            entries: &[],
-                            label: Some("bind_group_layout"),
-                        });
-
-                    let bindgroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        layout: &bind_group_layout,
-                        entries: &[],
-                        label: Some("diffuse_bind_group"),
-                    });
-
-                    gpu_bindgroup = GpuBindGroup {
-                        bindgroup,
-                        layout: bind_group_layout,
-                    };
-                }
-
-                println!("Created new bind group");
-
-                v.insert(gpu_bindgroup)
+                v.insert(gpu_material_bind_group)
             }
         }
     }
 
-    pub fn get_bindgroup(&self, material: &Rc<RefCell<Material>>) -> &GpuBindGroup {
-        self.map.get(&material.borrow().id()).unwrap()
+    pub fn get_material_bind_group_by_id(&self, material_id: &MaterialId) -> &GpuMaterialBindGroup {
+        self.map.get(material_id).unwrap()
     }
 }
 
-pub(super) struct GpuBindGroup {
-    pub bindgroup: wgpu::BindGroup,
-    pub layout: wgpu::BindGroupLayout,
+pub struct GpuGlobalBindGroup {
+    pub buffer: wgpu::Buffer,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct CameraUniform {
-    view_proj: [[f32; 4]; 4],
-}
+impl GpuGlobalBindGroup {
+    fn new(device: &wgpu::Device) -> Self {
+        let empty_data = glam::Mat4::IDENTITY.to_cols_array_2d();
 
-impl CameraUniform {
-    fn new() -> Self {
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&empty_data),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("camera_bind_group_layout"),
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+            label: Some("camera_bind_group"),
+        });
+
         Self {
-            view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            buffer,
+            bind_group_layout,
+            bind_group,
         }
     }
 
-    fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix().to_cols_array_2d();
+    pub fn update_camera(&self, queue: &wgpu::Queue, camera: &Camera) -> &Self {
+        let data = camera.build_view_projection_matrix().to_cols_array_2d();
+        queue.write_buffer(&self.buffer, 0, bytemuck::bytes_of(&data));
+        self
     }
 }
 
-// #[repr(C)]
-// #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-// struct ModelUniform {
-//     model_matrix: [[f32; 4]; 4],
-// }
+pub(super) struct GpuMaterialBindGroup {
+    // pub buffer: wgpu::Buffer,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
+}
 
-// impl ModelUniform {
-//     fn new() -> Self {
-//         Self {
-//             model_matrix: glam::Mat4::IDENTITY.to_cols_array_2d(),
-//         }
-//     }
+impl GpuMaterialBindGroup {
+    pub fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        textures: &mut Textures,
+        material: &Material,
+    ) -> Self {
+        let empty_data = glam::Vec3::ONE.to_array();
 
-//     fn update_model_matrix(&mut self, render_item: &RenderItem) {
-//         self.model_matrix = render_item.world_matrix.to_cols_array_2d();
-//     }
-// }
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Material Buffer"),
+            contents: bytemuck::bytes_of(&empty_data),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let mut layout_entries = vec![wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }];
+
+        let mut entries = vec![wgpu::BindGroupEntry {
+            binding: 0,
+            resource: buffer.as_entire_binding(),
+        }];
+
+        if let Some(texture) = material.texture() {
+            let gpu_texture = textures.get_gpu_texture(device, queue, &*texture.borrow());
+
+            layout_entries.push(wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: gpu_texture.create_binding_type(),
+                count: None,
+            });
+
+            layout_entries.push(wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(gpu_texture.get_sampler_binding_type()),
+                count: None,
+            });
+
+            entries.push(wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&gpu_texture.view),
+            });
+
+            entries.push(wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&gpu_texture.sampler),
+            });
+        }
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &layout_entries,
+            label: Some("material_bind_group_layout"),
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &entries,
+            label: Some("material_bind_group"),
+        });
+
+        Self {
+            // buffer,
+            bind_group_layout,
+            bind_group,
+        }
+    }
+}

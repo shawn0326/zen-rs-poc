@@ -38,6 +38,7 @@ pub(super) struct GpuTexture {
     pub descriptor: wgpu::TextureDescriptor<'static>,
     pub texture: wgpu::Texture,
     pub sampler: wgpu::Sampler,
+    pub view: wgpu::TextureView,
 }
 
 impl GpuTexture {
@@ -71,10 +72,13 @@ impl GpuTexture {
             ..Default::default()
         });
 
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
         Self {
             descriptor,
             texture,
             sampler,
+            view,
         }
     }
 
@@ -103,12 +107,6 @@ impl GpuTexture {
             view_dimension: wgpu::TextureViewDimension::D2,
             sample_type: wgpu::TextureSampleType::Float { filterable: true },
         }
-    }
-
-    // todo: cache view
-    pub fn create_view(&self) -> wgpu::TextureView {
-        self.texture
-            .create_view(&wgpu::TextureViewDescriptor::default())
     }
 
     pub fn get_sampler_binding_type(&self) -> wgpu::SamplerBindingType {

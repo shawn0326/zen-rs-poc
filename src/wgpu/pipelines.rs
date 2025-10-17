@@ -30,9 +30,10 @@ impl Pipelines {
             std::collections::hash_map::Entry::Vacant(v) => {
                 let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("Shader"),
-                    source: wgpu::ShaderSource::Wgsl(
-                        include_str!("shader_with_texture.wgsl").into(),
-                    ),
+                    source: wgpu::ShaderSource::Wgsl(match material.texture() {
+                        Some(_) => include_str!("shader_with_texture.wgsl").into(),
+                        None => include_str!("shader.wgsl").into(),
+                    }),
                 });
 
                 let pipeline_layout =

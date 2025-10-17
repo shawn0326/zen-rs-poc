@@ -65,11 +65,13 @@ impl<'window> App<'window> {
         let geometry = Geometry::create_test_shape();
         let geometry2 = Geometry::create_unit_quad();
         let material = Material::new();
-        material.borrow_mut().set_texture(texture);
+        let material2 = Material::new();
+        material2.borrow_mut().set_texture(texture);
 
         for i in 0..10000 {
             let geom_ref = if i % 2 == 0 { &geometry } else { &geometry2 };
-            let primitive = Primitive::new(geom_ref, &material);
+            let mat_ref = if i % 2 == 0 { &material } else { &material2 };
+            let primitive = Primitive::new(geom_ref, mat_ref);
 
             let obj = Object3D::new();
             obj.position
