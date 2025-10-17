@@ -93,8 +93,7 @@ impl BindGroups {
                 let gpu_bindgroup: GpuBindGroup;
 
                 if let Some(texture) = material.texture() {
-                    textures.set_texture(device, queue, &texture);
-                    let gpu_texture = textures.get_texture(&texture);
+                    let gpu_texture = textures.get_gpu_texture(device, queue, &*texture.borrow());
 
                     let texture_bindgroup_layout =
                         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -102,13 +101,7 @@ impl BindGroups {
                                 wgpu::BindGroupLayoutEntry {
                                     binding: 0,
                                     visibility: wgpu::ShaderStages::FRAGMENT,
-                                    ty: wgpu::BindingType::Texture {
-                                        multisampled: false,
-                                        view_dimension: wgpu::TextureViewDimension::D2,
-                                        sample_type: wgpu::TextureSampleType::Float {
-                                            filterable: true,
-                                        },
-                                    },
+                                    ty: gpu_texture.create_binding_type(),
                                     count: None,
                                 },
                                 wgpu::BindGroupLayoutEntry {
@@ -117,7 +110,7 @@ impl BindGroups {
                                     // This should match the filterable field of the
                                     // corresponding Texture entry above.
                                     ty: wgpu::BindingType::Sampler(
-                                        wgpu::SamplerBindingType::Filtering,
+                                        gpu_texture.get_sampler_binding_type(),
                                     ),
                                     count: None,
                                 },
@@ -131,9 +124,7 @@ impl BindGroups {
                             wgpu::BindGroupEntry {
                                 binding: 0,
                                 resource: wgpu::BindingResource::TextureView(
-                                    &gpu_texture
-                                        .texture
-                                        .create_view(&wgpu::TextureViewDescriptor::default()),
+                                    &gpu_texture.create_view(),
                                 ),
                             },
                             wgpu::BindGroupEntry {

@@ -10,7 +10,7 @@ const PYRAMID_LEVELS: usize = 8;
 
 fn build_pyramid_scene() -> Scene {
     let scene = Scene::new();
-    let geometry = Geometry::new();
+    let geometry = Geometry::create_unit_cube();
     let material = Material::new();
 
     fn build_level(

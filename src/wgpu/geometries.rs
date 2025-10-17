@@ -1,77 +1,74 @@
+use crate::graphics::{AttributeKey, Geometry, GeometryId};
+use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
-const POSITIONS: &[f32] = &[
-    -0.0868241,
-    0.49240386,
-    0.0,
-    -0.49513406,
-    0.06958647,
-    0.0,
-    -0.21918549,
-    -0.44939706,
-    0.0,
-    0.35966998,
-    -0.3473291,
-    0.0,
-    0.44147372,
-    0.2347359,
-    0.0,
-];
-
-const TEX_COORDS: &[f32] = &[
-    0.4131759, 0.00759614, 0.00486594, 0.43041353, 0.28081452, 0.949397, 0.85966998, 0.8473291,
-    0.9414737, 0.2652641,
-];
-
-const COLORS: &[f32] = &[
-    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-];
-
-const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
-
 pub(super) struct Geometries {
+    map: HashMap<GeometryId, GpuGeometry>,
+}
+
+impl Geometries {
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+
+    pub fn get_gpu_geometry(&mut self, device: &wgpu::Device, geometry: &Geometry) -> &GpuGeometry {
+        let geometry_id = geometry.id();
+
+        self.map.entry(geometry_id).or_insert_with(|| {
+            println!("Creating GPU geometry for GeometryId {:?}", geometry_id);
+            let gpu_geometry = GpuGeometry::new(device, geometry);
+            gpu_geometry
+        })
+    }
+}
+
+pub(super) struct GpuGeometry {
     pub positions_buffer: wgpu::Buffer,
     pub tex_coords_buffer: wgpu::Buffer,
     pub colors_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub num_indices: u32,
+    pub vertex_buffer_layouts: [wgpu::VertexBufferLayout<'static>; 3],
 }
 
-impl Geometries {
-    pub fn new(device: &wgpu::Device) -> Self {
+impl GpuGeometry {
+    pub fn new(device: &wgpu::Device, geometry: &Geometry) -> Self {
+        let positions = geometry
+            .get_attribute(&AttributeKey::Positions)
+            .expect("Geometry must have positions");
+        let tex_coords = geometry
+            .get_attribute(&AttributeKey::TexCoords)
+            .expect("Geometry must have texture coordinates");
+        let colors = geometry
+            .get_attribute(&AttributeKey::Colors)
+            .expect("Geometry must have colors");
+        let indices = geometry.get_indices();
+
         let positions_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(POSITIONS),
+            contents: bytemuck::cast_slice(&positions.data),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let tex_coords_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(TEX_COORDS),
+            contents: bytemuck::cast_slice(&tex_coords.data),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let colors_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(COLORS),
+            contents: bytemuck::cast_slice(&colors.data),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(INDICES),
+            contents: bytemuck::cast_slice(indices),
             usage: wgpu::BufferUsages::INDEX,
         });
-        let num_indices = INDICES.len() as u32;
+        let num_indices = indices.len() as u32;
 
-        Self {
-            positions_buffer,
-            tex_coords_buffer,
-            colors_buffer,
-            index_buffer,
-            num_indices,
-        }
-    }
-
-    pub fn desc<'a>() -> [wgpu::VertexBufferLayout<'a>; 3] {
-        [
+        let vertex_buffer_layouts = [
             // Buffer 0: positions
             wgpu::VertexBufferLayout {
                 array_stride: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
@@ -102,6 +99,15 @@ impl Geometries {
                     format: wgpu::VertexFormat::Float32x3,
                 }],
             },
-        ]
+        ];
+
+        Self {
+            positions_buffer,
+            tex_coords_buffer,
+            colors_buffer,
+            index_buffer,
+            num_indices,
+            vertex_buffer_layouts,
+        }
     }
 }

@@ -60,7 +60,7 @@ impl<'window> Renderer<'window> {
         };
         surface.configure(&device, &surface_config);
 
-        let geometries = Geometries::new(&device);
+        let geometries = Geometries::new();
         let pipelines = Pipelines::new();
         let targets = Targets::new();
         let bindgroups = BindGroups::new(&device);
@@ -113,11 +113,15 @@ impl<'window> Renderer<'window> {
                     &mut self.textures,
                 );
 
+                let gpu_geometry = self
+                    .geometries
+                    .get_gpu_geometry(&self.device, &*render_item.geometry.borrow());
+
                 let pipeline = self.pipelines.set_pipeline(
                     &self.device,
                     &render_item.material,
                     self.surface_config.format,
-                    &Geometries::desc(),
+                    &gpu_geometry.vertex_buffer_layouts,
                     &[
                         &self.bindgroups.get_camera_bindgroup().layout,
                         &self.bindgroups.get_bindgroup(&render_item.material).layout,
@@ -140,15 +144,15 @@ impl<'window> Renderer<'window> {
                     &[],
                 );
 
-                render_pass.set_vertex_buffer(0, self.geometries.positions_buffer.slice(..));
-                render_pass.set_vertex_buffer(1, self.geometries.tex_coords_buffer.slice(..));
-                render_pass.set_vertex_buffer(2, self.geometries.colors_buffer.slice(..));
+                render_pass.set_vertex_buffer(0, gpu_geometry.positions_buffer.slice(..));
+                render_pass.set_vertex_buffer(1, gpu_geometry.tex_coords_buffer.slice(..));
+                render_pass.set_vertex_buffer(2, gpu_geometry.colors_buffer.slice(..));
                 render_pass.set_index_buffer(
-                    self.geometries.index_buffer.slice(..),
-                    wgpu::IndexFormat::Uint16,
+                    gpu_geometry.index_buffer.slice(..),
+                    wgpu::IndexFormat::Uint32,
                 );
 
-                render_pass.draw_indexed(0..self.geometries.num_indices, 0, 0..1);
+                render_pass.draw_indexed(0..gpu_geometry.num_indices, 0, 0..1);
             }
         }
 

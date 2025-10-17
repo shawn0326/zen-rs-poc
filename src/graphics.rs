@@ -14,10 +14,12 @@ macro_rules! define_id {
 }
 
 mod geometry;
+mod geometry_factory;
 mod material;
 mod primitive;
 mod texture;
-pub use geometry::Geometry;
+pub(crate) use geometry::GeometryId;
+pub use geometry::{Attribute, AttributeKey, Geometry};
 pub use material::Material;
 pub(crate) use material::MaterialId;
 pub use primitive::Primitive;

@@ -62,12 +62,14 @@ impl<'window> App<'window> {
             diffuse_image.dimensions(),
         );
 
-        let geometry = Geometry::new();
+        let geometry = Geometry::create_test_shape();
+        let geometry2 = Geometry::create_unit_quad();
         let material = Material::new();
         material.borrow_mut().set_texture(texture);
 
         for i in 0..10000 {
-            let primitive = Primitive::new(&geometry, &material);
+            let geom_ref = if i % 2 == 0 { &geometry } else { &geometry2 };
+            let primitive = Primitive::new(geom_ref, &material);
 
             let obj = Object3D::new();
             obj.position
