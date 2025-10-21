@@ -71,7 +71,7 @@ impl<'window> App<'window> {
 
         let mut rng = rand::thread_rng();
 
-        for i in 0..30000 {
+        for i in 0..50000 {
             let geom_ref = if i % 2 == 0 { &geometry } else { &geometry2 };
             let mat_ref = if i % 2 == 0 { &material } else { &material2 };
             let primitive = Primitive::new(geom_ref, mat_ref);

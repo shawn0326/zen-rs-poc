@@ -120,12 +120,10 @@ impl<'window> Renderer<'window> {
             render_pass.set_bind_group(1, &self.primitive_bind_group.bind_group, &[]);
 
             let mut matrices = Vec::with_capacity(render_list.len() * 16);
+            let mut batch_start = 0u32;
+            let mut indices = 0..0;
 
-            let mut i = 0;
-
-            for render_item in render_list.iter() {
-                matrices.extend_from_slice(render_item.world_matrix.to_cols_array().as_slice());
-
+            for (i, render_item) in render_list.iter().enumerate() {
                 let geometry = render_item.geometry.borrow();
                 let material = render_item.material.borrow();
 
@@ -135,9 +133,14 @@ impl<'window> Renderer<'window> {
                 let geometry_changed = current_geometry_ptr != Some(geometry_ptr);
                 let material_changed = current_material_ptr != Some(material_ptr);
 
-                let gpu_geometry = self.geometries.get_gpu_geometry(&self.device, &*geometry);
-
                 if geometry_changed || material_changed {
+                    if i > 0 {
+                        // flush previous batch
+                        render_pass.draw_indexed(indices, 0, batch_start..(i as u32));
+                    }
+
+                    let gpu_geometry = self.geometries.get_gpu_geometry(&self.device, &*geometry);
+
                     let gpu_material_bind_group =
                         self.material_bind_groups.get_material_bind_group(
                             &self.device,
@@ -173,14 +176,20 @@ impl<'window> Renderer<'window> {
                             wgpu::IndexFormat::Uint32,
                         );
                     }
+
+                    current_material_ptr = Some(material_ptr);
+                    current_geometry_ptr = Some(geometry_ptr);
+
+                    batch_start = i as u32;
+                    indices = 0..gpu_geometry.num_indices;
                 }
 
-                render_pass.draw_indexed(0..gpu_geometry.num_indices, 0, i as u32..(i as u32 + 1));
+                matrices.extend_from_slice(render_item.world_matrix.to_cols_array().as_slice());
+            }
 
-                current_material_ptr = Some(material_ptr);
-                current_geometry_ptr = Some(geometry_ptr);
-
-                i += 1;
+            if !render_list.is_empty() {
+                // flush last batch
+                render_pass.draw_indexed(indices, 0, batch_start..(render_list.len() as u32));
             }
 
             self.global_bind_group.update_camera(&self.queue, camera);
