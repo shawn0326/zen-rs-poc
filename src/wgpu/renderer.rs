@@ -1,5 +1,8 @@
 use super::{
-    bindgroups::BindGroups, geometries::Geometries, pipelines::Pipelines, targets::Targets,
+    bindgroups::{GpuGlobalBindGroup, GpuPrimitiveBindGroup, MaterialBindGroups},
+    geometries::Geometries,
+    pipelines::Pipelines,
+    targets::Targets,
     textures::Textures,
 };
 use crate::{
@@ -15,7 +18,8 @@ pub struct Renderer<'window> {
     pipelines: Pipelines,
     targets: Targets,
     geometries: Geometries,
-    bindgroups: BindGroups,
+    global_bind_group: GpuGlobalBindGroup,
+    material_bind_groups: MaterialBindGroups,
     textures: Textures,
 }
 
@@ -63,7 +67,9 @@ impl<'window> Renderer<'window> {
         let geometries = Geometries::new();
         let pipelines = Pipelines::new();
         let targets = Targets::new();
-        let bindgroups = BindGroups::new(&device);
+        let global_bind_group = GpuGlobalBindGroup::new(&device);
+        GpuPrimitiveBindGroup::new(&device);
+        let material_bind_groups = MaterialBindGroups::new();
         let textures = Textures::new(&device);
 
         Self {
@@ -74,7 +80,8 @@ impl<'window> Renderer<'window> {
             pipelines,
             targets,
             geometries,
-            bindgroups,
+            global_bind_group,
+            material_bind_groups,
             textures,
         }
     }
@@ -103,25 +110,19 @@ impl<'window> Renderer<'window> {
                 .targets
                 .create_render_pass(&surface_texture, &mut encoder);
 
-            let gpu_global_bind_group = self.bindgroups.get_global_bind_group();
-            gpu_global_bind_group.update_camera(&self.queue, camera);
-            render_pass.set_bind_group(0, &gpu_global_bind_group.bind_group, &[]);
+            self.global_bind_group.update_camera(&self.queue, camera);
+            render_pass.set_bind_group(0, &self.global_bind_group.bind_group, &[]);
 
             for render_item in render_list.iter() {
                 let geometry = render_item.geometry.borrow();
                 let material = render_item.material.borrow();
 
-                self.bindgroups.get_material_bind_group(
+                let gpu_material_bind_group = self.material_bind_groups.get_material_bind_group(
                     &self.device,
                     &self.queue,
                     &*material,
                     &mut self.textures,
                 );
-
-                let gpu_global_bind_group = self.bindgroups.get_global_bind_group();
-                let gpu_material_bind_group = self
-                    .bindgroups
-                    .get_material_bind_group_by_id(&material.id());
 
                 let gpu_geometry = self.geometries.get_gpu_geometry(&self.device, &*geometry);
 
@@ -131,7 +132,7 @@ impl<'window> Renderer<'window> {
                     self.surface_config.format,
                     &gpu_geometry.vertex_buffer_layouts,
                     &[
-                        &gpu_global_bind_group.bind_group_layout,
+                        &self.global_bind_group.bind_group_layout,
                         &gpu_material_bind_group.bind_group_layout,
                     ],
                 );
