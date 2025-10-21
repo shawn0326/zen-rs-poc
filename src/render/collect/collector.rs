@@ -10,19 +10,19 @@ pub struct RenderCollector {}
 
 impl RenderCollector {
     pub fn collect(&self, scene: &Scene) -> Vec<RenderItem> {
-        let result = RefCell::new(Vec::new());
-        Object3D::traverse(&scene.root, &|o| {
-            let primitives = o.primitives.borrow();
+        let mut result = Vec::new();
+        for obj in Object3D::traverse(&scene.root) {
+            let primitives = obj.primitives.borrow();
             for primitive in primitives.iter() {
                 let render_item = RenderItem {
-                    world_matrix: o.world_matrix.get(),
+                    world_matrix: obj.world_matrix.get(),
                     geometry: primitive.geometry().clone(),
                     material: primitive.material().clone(),
                 };
-                result.borrow_mut().push(render_item);
+                result.push(render_item);
             }
-        });
-        result.into_inner()
+        }
+        result
     }
 }
 

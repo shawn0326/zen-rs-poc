@@ -56,9 +56,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     let scene_for_traverse = build_pyramid_scene();
     group.bench_function("traverse_scene", move |b| {
         b.iter(|| {
-            Object3D::traverse(&scene_for_traverse.root, &|o| {
-                black_box(o.name.len());
-            });
+            for obj in Object3D::traverse(&scene_for_traverse.root) {
+                black_box(obj.name.len());
+            }
         });
     });
 

@@ -100,15 +100,8 @@ impl Object3D {
         false
     }
 
-    pub fn traverse<F>(root: &Rc<Self>, callback: &F)
-    where
-        F: Fn(&Rc<Self>),
-    {
-        callback(root);
-
-        for child in root.children().iter() {
-            Self::traverse(child, callback);
-        }
+    pub fn traverse(root: &Rc<Self>) -> Traversal {
+        Traversal::new(root)
     }
 
     pub fn update_matrix(&self) {
@@ -133,6 +126,34 @@ impl Object3D {
 
         for child in self.children().iter() {
             child.update_world_matrix();
+        }
+    }
+}
+
+pub struct Traversal {
+    stack: Vec<Rc<Object3D>>,
+}
+
+impl Traversal {
+    pub fn new(root: &Rc<Object3D>) -> Self {
+        Self {
+            stack: vec![Rc::clone(root)],
+        }
+    }
+}
+
+impl Iterator for Traversal {
+    type Item = Rc<Object3D>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.stack.pop() {
+            // Push children in reverse order to maintain original order during traversal
+            for child in node.children().iter().rev() {
+                self.stack.push(Rc::clone(child));
+            }
+            Some(node)
+        } else {
+            None
         }
     }
 }
