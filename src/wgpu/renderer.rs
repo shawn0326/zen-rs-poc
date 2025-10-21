@@ -6,6 +6,7 @@ use super::{
     textures::Textures,
 };
 use crate::{
+    graphics::{Geometry, Material},
     render::{RenderItem, RenderTarget},
     scene::Camera,
 };
@@ -19,6 +20,7 @@ pub struct Renderer<'window> {
     targets: Targets,
     geometries: Geometries,
     global_bind_group: GpuGlobalBindGroup,
+    primitive_bind_group: GpuPrimitiveBindGroup,
     material_bind_groups: MaterialBindGroups,
     textures: Textures,
 }
@@ -68,7 +70,7 @@ impl<'window> Renderer<'window> {
         let pipelines = Pipelines::new();
         let targets = Targets::new();
         let global_bind_group = GpuGlobalBindGroup::new(&device);
-        GpuPrimitiveBindGroup::new(&device);
+        let primitive_bind_group = GpuPrimitiveBindGroup::new(&device);
         let material_bind_groups = MaterialBindGroups::new();
         let textures = Textures::new(&device);
 
@@ -81,6 +83,7 @@ impl<'window> Renderer<'window> {
             targets,
             geometries,
             global_bind_group,
+            primitive_bind_group,
             material_bind_groups,
             textures,
         }
@@ -105,52 +108,84 @@ impl<'window> Renderer<'window> {
 
         let surface_texture = self.surface.get_current_texture().unwrap();
 
+        let mut current_material_ptr: Option<*const Material> = None;
+        let mut current_geometry_ptr: Option<*const Geometry> = None;
+
         {
             let mut render_pass = self
                 .targets
                 .create_render_pass(&surface_texture, &mut encoder);
 
-            self.global_bind_group.update_camera(&self.queue, camera);
             render_pass.set_bind_group(0, &self.global_bind_group.bind_group, &[]);
+            render_pass.set_bind_group(1, &self.primitive_bind_group.bind_group, &[]);
+
+            let mut matrices = Vec::with_capacity(render_list.len() * 16);
+
+            let mut i = 0;
 
             for render_item in render_list.iter() {
+                matrices.extend_from_slice(render_item.world_matrix.to_cols_array().as_slice());
+
                 let geometry = render_item.geometry.borrow();
                 let material = render_item.material.borrow();
 
-                let gpu_material_bind_group = self.material_bind_groups.get_material_bind_group(
-                    &self.device,
-                    &self.queue,
-                    &*material,
-                    &mut self.textures,
-                );
+                let geometry_ptr = (&*geometry) as *const Geometry;
+                let material_ptr = (&*material) as *const Material;
+
+                let geometry_changed = current_geometry_ptr != Some(geometry_ptr);
+                let material_changed = current_material_ptr != Some(material_ptr);
 
                 let gpu_geometry = self.geometries.get_gpu_geometry(&self.device, &*geometry);
 
-                let pipeline = self.pipelines.set_pipeline(
-                    &self.device,
-                    &render_item.material,
-                    self.surface_config.format,
-                    &gpu_geometry.vertex_buffer_layouts,
-                    &[
-                        &self.global_bind_group.bind_group_layout,
-                        &gpu_material_bind_group.bind_group_layout,
-                    ],
-                );
+                if geometry_changed || material_changed {
+                    let gpu_material_bind_group =
+                        self.material_bind_groups.get_material_bind_group(
+                            &self.device,
+                            &self.queue,
+                            &*material,
+                            &mut self.textures,
+                        );
 
-                render_pass.set_pipeline(pipeline);
+                    let pipeline = self.pipelines.set_pipeline(
+                        &self.device,
+                        &render_item.material,
+                        self.surface_config.format,
+                        &gpu_geometry.vertex_buffer_layouts,
+                        &[
+                            &self.global_bind_group.bind_group_layout,
+                            &self.primitive_bind_group.layout,
+                            &gpu_material_bind_group.bind_group_layout,
+                        ],
+                    );
 
-                render_pass.set_bind_group(1, &gpu_material_bind_group.bind_group, &[]);
+                    render_pass.set_pipeline(pipeline);
 
-                render_pass.set_vertex_buffer(0, gpu_geometry.positions_buffer.slice(..));
-                render_pass.set_vertex_buffer(1, gpu_geometry.tex_coords_buffer.slice(..));
-                render_pass.set_vertex_buffer(2, gpu_geometry.colors_buffer.slice(..));
-                render_pass.set_index_buffer(
-                    gpu_geometry.index_buffer.slice(..),
-                    wgpu::IndexFormat::Uint32,
-                );
+                    if material_changed {
+                        render_pass.set_bind_group(2, &gpu_material_bind_group.bind_group, &[]);
+                    }
 
-                render_pass.draw_indexed(0..gpu_geometry.num_indices, 0, 0..1);
+                    if geometry_changed {
+                        render_pass.set_vertex_buffer(0, gpu_geometry.positions_buffer.slice(..));
+                        render_pass.set_vertex_buffer(1, gpu_geometry.tex_coords_buffer.slice(..));
+                        render_pass.set_vertex_buffer(2, gpu_geometry.colors_buffer.slice(..));
+                        render_pass.set_index_buffer(
+                            gpu_geometry.index_buffer.slice(..),
+                            wgpu::IndexFormat::Uint32,
+                        );
+                    }
+                }
+
+                render_pass.draw_indexed(0..gpu_geometry.num_indices, 0, i as u32..(i as u32 + 1));
+
+                current_material_ptr = Some(material_ptr);
+                current_geometry_ptr = Some(geometry_ptr);
+
+                i += 1;
             }
+
+            self.global_bind_group.update_camera(&self.queue, camera);
+            self.primitive_bind_group
+                .upload_matrices(&self.queue, &matrices);
         }
 
         self.queue.submit(Some(encoder.finish()));

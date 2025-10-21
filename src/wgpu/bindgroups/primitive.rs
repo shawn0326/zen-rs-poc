@@ -1,27 +1,49 @@
-pub(in super::super) struct GpuPrimitiveBindGroup {}
+pub(in super::super) struct GpuPrimitiveBindGroup {
+    buffer: wgpu::Buffer,
+    pub layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
+}
 
 impl GpuPrimitiveBindGroup {
     pub fn new(device: &wgpu::Device) -> Self {
-        // let align = device.limits().min_uniform_buffer_offset_alignment as u64;
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Primitive Buffer"),
+            size: 64 * 50000, // 64 bytes per 4x4 matrix, support up to 10,000 primitives
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
 
-        // let stride = ((std::mem::size_of::<[f32; 16]>() as u64 + align - 1) / align) * align;
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Primitive Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
 
-        println!(
-            "min_uniform_buffer_offset_alignment: {}, max_uniform_buffer_binding_size: {}",
-            (std::mem::size_of::<[f32; 16]>() as u64),
-            device.limits().max_uniform_buffer_binding_size
-        );
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Primitive Bind Group"),
+            layout: &layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+        });
 
-        device.limits().max_storage_buffer_binding_size;
-        device.limits().max_buffer_size;
-        Self {}
+        Self {
+            buffer,
+            layout,
+            bind_group,
+        }
+    }
+
+    pub fn upload_matrices(&self, queue: &wgpu::Queue, matrices: &[f32]) {
+        queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(matrices));
     }
 }
-
-// pub(in super::super) struct GpuPrimitiveBuffer {}
-
-// impl GpuPrimitiveBuffer {
-//     pub fn new(device: &wgpu::Device) -> Self {
-//         Self {}
-//     }
-// }

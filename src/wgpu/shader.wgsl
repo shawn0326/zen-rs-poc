@@ -17,14 +17,19 @@ struct CameraUniform {
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 
+@group(1) @binding(0)
+var<storage, read> model_matrices: array<mat4x4f>;
+
 @vertex
 fn vs_main(
     model: VertexInput,
+    @builtin(instance_index) instance_idx: u32,
 ) -> VertexOutput {
     var out: VertexOutput;
     out.tex_coord = model.tex_coord;
     out.color = model.color;
-    out.clip_position = camera.view_proj * vec4f(model.position, 1.0);
+    let model_matrix = model_matrices[instance_idx];
+    out.clip_position = camera.view_proj * model_matrix * vec4f(model.position, 1.0);
     return out;
 }
 

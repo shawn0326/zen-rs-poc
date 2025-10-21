@@ -1,5 +1,6 @@
 use image::GenericImageView;
 use pollster::block_on;
+use rand::Rng;
 use std::{collections::VecDeque, sync::Arc, time::Instant};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
@@ -45,7 +46,7 @@ impl<'window> App<'window> {
         let scene = Scene::new();
 
         let camera = Camera {
-            eye: (0.0, 1.0, 2.0).into(),
+            eye: (0.0, 0.0, 5.0).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: Vec3::Y,
             aspect: size.width as f32 / size.height as f32,
@@ -68,14 +69,20 @@ impl<'window> App<'window> {
         let material2 = Material::new();
         material2.borrow_mut().set_texture(texture);
 
-        for i in 0..10000 {
+        let mut rng = rand::thread_rng();
+
+        for i in 0..30000 {
             let geom_ref = if i % 2 == 0 { &geometry } else { &geometry2 };
             let mat_ref = if i % 2 == 0 { &material } else { &material2 };
             let primitive = Primitive::new(geom_ref, mat_ref);
 
             let obj = Object3D::new();
-            obj.position
-                .set(obj.position.get() + Vec3::new(i as f32, 2.0, 3.0));
+            obj.position.set(Vec3::new(
+                rng.gen_range(-2.0..2.0),
+                rng.gen_range(-2.0..2.0),
+                rng.gen_range(-2.0..2.0),
+            ));
+            obj.scale.set(Vec3::splat(rng.gen_range(0.02..0.08)));
             obj.primitives.borrow_mut().push(primitive);
 
             scene.add(&obj);
