@@ -31,13 +31,9 @@ impl ApplicationHandler<App<'static>> for AppHandler {
             let window = wgpu::web_sys::window().unwrap_throw();
             let document = window.document().unwrap_throw();
             let canvas = document.create_element("canvas").unwrap_throw();
+            canvas.set_attribute("style", "border: 0; margin: 0; padding: 0; display: block; width: 100vw; height: 100vh;").unwrap_throw();
             let html_canvas_element: wgpu::web_sys::HtmlCanvasElement = canvas.unchecked_into();
             html_canvas_element.set_id("wgpu-canvas");
-            html_canvas_element.set_width(800);
-            html_canvas_element.set_height(600);
-            html_canvas_element.style().set_css_text(
-                "border: 0; margin: 0; padding: 0; display: block; width: 100vw; height: 100vh;",
-            );
             let body = document.body().unwrap_throw();
             body.append_child(&html_canvas_element).unwrap_throw();
 
@@ -46,11 +42,10 @@ impl ApplicationHandler<App<'static>> for AppHandler {
 
             let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-            // Run the future asynchronously and use the
-            // proxy to send the results to the event loop
             if let Some(proxy) = self.proxy.take() {
                 wasm_bindgen_futures::spawn_local(async move {
-                    let _ = proxy.send_event(App::new_benchmark(window, 1000).await);
+                    log::debug!("Window size: {:?}", window.inner_size());
+                    let _ = proxy.send_event(App::new_benchmark(window, 50000).await);
                 });
             }
         }

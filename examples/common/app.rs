@@ -31,7 +31,10 @@ impl<'window> App<'window> {
             ..Default::default()
         });
 
-        let size = window.inner_size();
+        let mut size = window.inner_size();
+        size.width = size.width.max(1);
+        size.height = size.height.max(1);
+
         let surface = instance.create_surface(window.clone()).unwrap();
 
         let renderer = Renderer::new(&instance, surface, (size.width, size.height)).await;
