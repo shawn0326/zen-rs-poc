@@ -1,157 +1,80 @@
-use image::GenericImageView;
-use pollster::block_on;
-use rand::Rng;
-use std::{collections::VecDeque, sync::Arc, time::Instant};
+#[path = "common/mod.rs"]
+mod common;
+use common::App;
+use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
-use zen_rs_poc::scene::Camera;
-use zen_rs_poc::{
-    graphics::{Geometry, Material, Primitive, Texture},
-    math::Vec3,
-    render::{RenderCollector, RenderTarget},
-    scene::{Object3D, Scene},
-    wgpu::Renderer,
-};
 
-struct App<'window> {
-    window: Arc<Window>,
-    renderer: Renderer<'window>,
-    screen_render_target: RenderTarget,
-    render_collector: RenderCollector,
-    scene: Scene,
-    camera: Camera,
-    frame_times: VecDeque<Instant>,
-}
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use winit::platform::web::WindowAttributesExtWebSys;
 
-impl<'window> App<'window> {
-    async fn new(window: Arc<Window>) -> Self {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
-            ..Default::default()
-        });
+#[cfg(not(target_arch = "wasm32"))]
+use pollster::block_on;
 
-        let size = window.inner_size();
-        let surface = instance.create_surface(window.clone()).unwrap();
-
-        let renderer = Renderer::new(&instance, surface, (size.width, size.height)).await;
-
-        let screen_render_target = RenderTarget::screen(size.width, size.height);
-        println!("Screen RenderTarget: {:?}", screen_render_target);
-
-        let render_collector = RenderCollector {};
-
-        let scene = Scene::new();
-
-        let camera = Camera {
-            eye: (0.0, 0.0, 5.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: Vec3::Y,
-            aspect: size.width as f32 / size.height as f32,
-            fovy: 45.0,
-            near: 0.1,
-            far: 100.0,
-        };
-
-        let diffuse_bytes = include_bytes!("../assets/textures/logo.jpg");
-        let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
-
-        let texture = Texture::from_data(
-            diffuse_image.to_rgba8().into_raw(),
-            diffuse_image.dimensions(),
-        );
-
-        let geometry = Geometry::create_test_shape();
-        let geometry2 = Geometry::create_unit_quad();
-        let material = Material::new();
-        let material2 = Material::new();
-        material2.borrow_mut().set_texture(texture);
-
-        let mut rng = rand::thread_rng();
-
-        for i in 0..50000 {
-            let geom_ref = if i % 2 == 0 { &geometry } else { &geometry2 };
-            let mat_ref = if i % 2 == 0 { &material } else { &material2 };
-            let primitive = Primitive::new(geom_ref, mat_ref);
-
-            let obj = Object3D::new();
-            obj.position.set(Vec3::new(
-                rng.gen_range(-2.0..2.0),
-                rng.gen_range(-2.0..2.0),
-                rng.gen_range(-2.0..2.0),
-            ));
-            obj.scale.set(Vec3::splat(rng.gen_range(0.02..0.08)));
-            obj.primitives.borrow_mut().push(primitive);
-
-            scene.add(&obj);
-        }
-
-        Self {
-            window,
-            renderer,
-            screen_render_target,
-            render_collector,
-            scene,
-            camera,
-            frame_times: VecDeque::new(),
-        }
-    }
-
-    pub fn set_window_resized(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        self.screen_render_target
-            .set_size(new_size.width, new_size.height);
-
-        println!("Screen RenderTarget: {:?}", self.screen_render_target);
-    }
-
-    pub fn update_fps_stats(&mut self) {
-        let now = Instant::now();
-
-        self.frame_times.push_back(now);
-
-        while self.frame_times.len() > 60 {
-            self.frame_times.pop_front();
-        }
-
-        if self.frame_times.len() > 1 {
-            let oldest = self.frame_times.front().unwrap();
-            let elapsed = now.duration_since(*oldest).as_secs_f64();
-            let fps = (self.frame_times.len() - 1) as f64 / elapsed;
-
-            if self.frame_times.len() % 10 == 0 {
-                self.window
-                    .set_title(&format!("Basic Scene Example - FPS: {:.1}", fps));
-            }
-        }
-    }
-
-    pub fn render(&mut self) {
-        self.scene.update_world_matrix();
-        let render_list = self.render_collector.collect(&self.scene);
-        self.renderer
-            .render(&render_list, &self.camera, &self.screen_render_target);
-    }
-}
-
-#[derive(Default)]
 struct AppHandler {
     app: Option<App<'static>>,
+    #[cfg(target_arch = "wasm32")]
+    proxy: Option<winit::event_loop::EventLoopProxy<App<'static>>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    fps_counter: common::FpsCounter,
 }
 
-impl ApplicationHandler for AppHandler {
+impl ApplicationHandler<App<'static>> for AppHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attributes = Window::default_attributes().with_title("Basic Scene Example");
-        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+        #[cfg(target_arch = "wasm32")]
+        {
+            let window = wgpu::web_sys::window().unwrap_throw();
+            let document = window.document().unwrap_throw();
+            let canvas = document.create_element("canvas").unwrap_throw();
+            let html_canvas_element: wgpu::web_sys::HtmlCanvasElement = canvas.unchecked_into();
+            html_canvas_element.set_id("wgpu-canvas");
+            html_canvas_element.set_width(800);
+            html_canvas_element.set_height(600);
+            html_canvas_element.style().set_css_text(
+                "border: 0; margin: 0; padding: 0; display: block; width: 100vw; height: 100vh;",
+            );
+            let body = document.body().unwrap_throw();
+            body.append_child(&html_canvas_element).unwrap_throw();
 
-        let app = block_on(App::new(window));
+            let window_attributes =
+                Window::default_attributes().with_canvas(Some(html_canvas_element));
 
-        app.window.request_redraw();
+            let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-        self.app = Some(app);
+            // Run the future asynchronously and use the
+            // proxy to send the results to the event loop
+            if let Some(proxy) = self.proxy.take() {
+                wasm_bindgen_futures::spawn_local(async move {
+                    let _ = proxy.send_event(App::new_benchmark(window, 1000).await);
+                });
+            }
+        }
 
-        println!("Resumed");
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let window_attributes = Window::default_attributes().with_title("Basic Scene Example");
+            let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+
+            let app = block_on(App::new_benchmark(window, 50000));
+            app.window.request_redraw();
+            self.app = Some(app);
+        }
+    }
+
+    #[allow(unused_mut, unused_variables)]
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, mut event: App<'static>) {
+        // This is where proxy.send_event() ends up
+        #[cfg(target_arch = "wasm32")]
+        {
+            event.window.request_redraw();
+            self.app = Some(event);
+            log::debug!("App initialized in wasm32");
+        }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -166,12 +89,19 @@ impl ApplicationHandler for AppHandler {
                 }
 
                 if let Some(app) = &mut self.app {
+                    log::debug!("Size changed: {:?}", size);
                     app.set_window_resized(size);
                 }
             }
             WindowEvent::RedrawRequested => {
                 if let Some(app) = &mut self.app {
-                    app.update_fps_stats();
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        let fps = self.fps_counter.tick();
+                        app.window
+                            .set_title(&format!("Basic Scene Example - FPS: {:.1}", fps));
+                    }
+
                     app.render();
                     app.window.request_redraw();
                 }
@@ -214,11 +144,59 @@ impl ApplicationHandler for AppHandler {
 }
 
 fn main() {
-    let mut app_handler = AppHandler::default();
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let mut app_handler = AppHandler {
+            app: None,
+            fps_counter: common::FpsCounter::default(),
+        };
 
-    let event_loop = EventLoop::new().unwrap();
-    event_loop.set_control_flow(ControlFlow::Poll);
-    event_loop
-        .run_app(&mut app_handler)
-        .expect("Failed to run event loop");
+        let event_loop = EventLoop::with_user_event().build().unwrap();
+        event_loop.set_control_flow(ControlFlow::Poll);
+        event_loop
+            .run_app(&mut app_handler)
+            .expect("Failed to run event loop");
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(start)]
+pub fn start() {
+    console_error_panic_hook::set_once();
+
+    wasm_bindgen_futures::spawn_local(async move {
+        // let window = wgpu::web_sys::window().unwrap_throw();
+        // let document = window.document().unwrap_throw();
+        // let canvas = document.create_element("canvas").unwrap_throw();
+        // let html_canvas_element: wgpu::web_sys::HtmlCanvasElement = canvas.unchecked_into();
+        // html_canvas_element.set_id("wgpu-canvas");
+        // html_canvas_element.set_width(800);
+        // html_canvas_element.set_height(600);
+        // let body = document.body().unwrap_throw();
+        // body.append_child(&html_canvas_element).unwrap_throw();
+
+        // let window_attributes = Window::default_attributes().with_canvas(Some(html_canvas_element));
+
+        // let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+
+        // use winit::platform::web::WindowExtWebSys;
+        // let canvas = window.canvas().expect("no canvas on web");
+        // let doc = web_sys::window().unwrap().document().unwrap();
+        // doc.body().unwrap().append_child(&canvas).unwrap();
+
+        // let app = App::new_benchmark(window.clone()).await;
+        // app.window.request_redraw();
+
+        console_log::init_with_level(log::Level::Debug).expect("Couldn't initialize logger");
+
+        let event_loop = EventLoop::with_user_event().build().unwrap();
+        event_loop.set_control_flow(ControlFlow::Poll);
+
+        let mut app_handler = AppHandler {
+            app: None,
+            proxy: Some(event_loop.create_proxy()),
+        };
+
+        event_loop.run_app(&mut app_handler).unwrap();
+    });
 }
