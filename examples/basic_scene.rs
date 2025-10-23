@@ -75,7 +75,6 @@ impl ApplicationHandler<App<'static>> for AppHandler {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
-                println!("The close button was pressed; stopping");
                 event_loop.exit();
             }
             WindowEvent::Resized(size) => {

@@ -6,45 +6,31 @@ define_id!(TextureId);
 pub type TextureRef = Rc<RefCell<Texture>>;
 
 #[derive(Clone)]
-pub struct Texture1DData {
-    pub data: Vec<u8>,
-}
-
-#[derive(Clone)]
-pub struct Texture2DData {
-    pub data: Vec<u8>,
-    pub width: u32,
-    pub height: u32,
-}
-
-#[derive(Clone)]
-pub struct Texture3DData {
-    pub data: Vec<u8>,
-    pub width: u32,
-    pub height: u32,
-    pub depth: u32,
-}
-
-#[derive(Clone)]
-pub struct TextureCubeData {
-    pub data: Vec<u8>,
-    pub size: u32,
-}
-
-#[derive(Clone)]
-pub struct SurfaceTextureRef {
-    pub surface_id: u32,
-    pub width: u32,
-    pub height: u32,
-}
-
-#[derive(Clone)]
 pub enum TextureSource {
-    D1(Texture1DData),
-    D2(Texture2DData),
-    D3(Texture3DData),
-    Cube(TextureCubeData),
-    Surface(SurfaceTextureRef),
+    D1 {
+        data: Vec<u8>,
+        width: u32,
+    },
+    D2 {
+        data: Vec<u8>,
+        width: u32,
+        height: u32,
+    },
+    D3 {
+        data: Vec<u8>,
+        width: u32,
+        height: u32,
+        depth: u32,
+    },
+    Cube {
+        data: Vec<u8>,
+        size: u32,
+    },
+    Surface {
+        surface_id: u32,
+        width: u32,
+        height: u32,
+    },
     Empty,
 }
 
@@ -64,22 +50,22 @@ impl Texture {
     pub fn from_2d_data(data: Vec<u8>, width: u32, height: u32) -> TextureRef {
         Rc::new(RefCell::new(Self {
             id: TextureId::new(),
-            source: TextureSource::D2(Texture2DData {
+            source: TextureSource::D2 {
                 data,
                 width,
                 height,
-            }),
+            },
         }))
     }
 
     pub fn from_surface(surface_id: u32, width: u32, height: u32) -> TextureRef {
         Rc::new(RefCell::new(Self {
             id: TextureId::new(),
-            source: TextureSource::Surface(SurfaceTextureRef {
+            source: TextureSource::Surface {
                 surface_id,
                 width,
                 height,
-            }),
+            },
         }))
     }
 

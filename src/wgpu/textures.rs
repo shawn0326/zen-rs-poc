@@ -1,4 +1,4 @@
-use crate::graphics::{Texture, Texture2DData, TextureId, TextureSource};
+use crate::graphics::{Texture, TextureId, TextureSource};
 use std::collections::HashMap;
 
 pub(super) struct Textures {
@@ -23,9 +23,13 @@ impl Textures {
         let texture_id = texture.id();
 
         match texture.source() {
-            TextureSource::D2(source) => self.map.entry(texture_id).or_insert_with(|| {
-                let gpu_texture = GpuTexture::new(device, (source.width, source.height));
-                gpu_texture.upload(queue, source);
+            TextureSource::D2 {
+                data,
+                width,
+                height,
+            } => self.map.entry(texture_id).or_insert_with(|| {
+                let gpu_texture = GpuTexture::new(device, (*width, *height));
+                gpu_texture.upload(queue, data, *width, *height);
                 gpu_texture
             }),
             _ => &self.default_gpu_texture,
@@ -81,7 +85,7 @@ impl GpuTexture {
         }
     }
 
-    pub fn upload(&self, queue: &wgpu::Queue, source: &Texture2DData) -> &Self {
+    pub fn upload(&self, queue: &wgpu::Queue, data: &Vec<u8>, width: u32, height: u32) -> &Self {
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.texture,
@@ -89,11 +93,11 @@ impl GpuTexture {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            &source.data,
+            data,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * source.width),
-                rows_per_image: Some(source.height),
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
             },
             self.descriptor.size,
         );

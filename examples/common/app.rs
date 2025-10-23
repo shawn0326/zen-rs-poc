@@ -5,8 +5,8 @@ use winit::window::Window;
 use zen_rs_poc::scene::Camera;
 use zen_rs_poc::{
     graphics::{Geometry, Material, Primitive, Texture},
-    math::Vec3,
-    render::{RenderCollector, RenderTarget},
+    math::{Color4, Vec3},
+    render::{LoadOp, RenderCollector, RenderTarget},
     scene::{Object3D, Scene},
     wgpu::Renderer,
 };
@@ -37,9 +37,11 @@ impl<'window> App<'window> {
 
         let surface = instance.create_surface(window.clone()).unwrap();
 
-        let renderer = Renderer::new(&instance, surface, (size.width, size.height)).await;
+        let renderer = Renderer::new(&instance, surface).await;
 
-        let screen_render_target = RenderTarget::screen(size.width, size.height);
+        let mut screen_render_target = RenderTarget::from_surface(0, size.width, size.height);
+        let color_attachment_0 = screen_render_target.color_attachments.get_mut(0).unwrap();
+        color_attachment_0.ops.load = LoadOp::Clear(Color4::new(0.1, 0.2, 0.3, 1.0));
 
         let render_collector = RenderCollector {};
 
@@ -108,9 +110,7 @@ impl<'window> App<'window> {
 
     pub fn set_window_resized(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.screen_render_target
-            .set_size(new_size.width, new_size.height);
-
-        println!("Screen RenderTarget: {:?}", self.screen_render_target);
+            .resize(new_size.width, new_size.height);
     }
 
     pub fn render(&mut self) {

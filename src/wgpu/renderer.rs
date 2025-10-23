@@ -2,6 +2,7 @@ use super::{
     bindgroups::{GpuGlobalBindGroup, GpuPrimitiveBindGroup, MaterialBindGroups},
     geometries::Geometries,
     pipelines::Pipelines,
+    surfaces::Surfaces,
     targets::Targets,
     textures::Textures,
 };
@@ -11,11 +12,11 @@ use crate::{
     scene::Camera,
 };
 
-pub struct Renderer<'window> {
+pub struct Renderer<'surf> {
+    adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    surface: wgpu::Surface<'window>,
-    surface_config: wgpu::SurfaceConfiguration,
+    surfaces: Surfaces<'surf>,
     pipelines: Pipelines,
     targets: Targets,
     geometries: Geometries,
@@ -25,12 +26,8 @@ pub struct Renderer<'window> {
     textures: Textures,
 }
 
-impl<'window> Renderer<'window> {
-    pub async fn new(
-        instance: &wgpu::Instance,
-        surface: wgpu::Surface<'window>,
-        (width, height): (u32, u32),
-    ) -> Self {
+impl<'surf> Renderer<'surf> {
+    pub async fn new(instance: &wgpu::Instance, surface: wgpu::Surface<'surf>) -> Self {
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
@@ -53,32 +50,22 @@ impl<'window> Renderer<'window> {
             .await
             .unwrap();
 
-        let caps = surface.get_capabilities(&adapter);
-        let surface_config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: caps.formats[0],
-            width: width.max(1),
-            height: height.max(1),
-            present_mode: wgpu::PresentMode::Fifo,
-            alpha_mode: caps.alpha_modes[0],
-            view_formats: vec![],
-            desired_maximum_frame_latency: 2,
-        };
-        surface.configure(&device, &surface_config);
-
+        let mut surfaces = Surfaces::new();
         let geometries = Geometries::new();
-        let pipelines = Pipelines::new();
+        let pipelines = Pipelines::new(surface.get_capabilities(&adapter).formats[0]);
         let targets = Targets::new();
         let global_bind_group = GpuGlobalBindGroup::new(&device);
         let primitive_bind_group = GpuPrimitiveBindGroup::new(&device);
         let material_bind_groups = MaterialBindGroups::new();
         let textures = Textures::new(&device);
 
+        surfaces.add_surface(surface);
+
         Self {
+            adapter,
             device,
             queue,
-            surface,
-            surface_config,
+            surfaces,
             pipelines,
             targets,
             geometries,
@@ -90,15 +77,9 @@ impl<'window> Renderer<'window> {
     }
 
     pub fn render(&mut self, render_list: &[RenderItem], camera: &Camera, target: &RenderTarget) {
-        if let RenderTarget::Screen(screen_target) = target {
-            if (screen_target.width != self.surface_config.width)
-                || (screen_target.height != self.surface_config.height)
-            {
-                self.surface_config.width = screen_target.width.max(1);
-                self.surface_config.height = screen_target.height.max(1);
-                self.surface.configure(&self.device, &self.surface_config);
-            }
-        }
+        let surface_textures =
+            self.surfaces
+                .get_surface_textures(&self.adapter, &self.device, target);
 
         let mut encoder = self
             .device
@@ -106,15 +87,15 @@ impl<'window> Renderer<'window> {
                 label: Some("Render Encoder"),
             });
 
-        let surface_texture = self.surface.get_current_texture().unwrap();
-
-        let mut current_material_ptr: Option<*const Material> = None;
-        let mut current_geometry_ptr: Option<*const Geometry> = None;
-
         {
-            let mut render_pass = self
-                .targets
-                .create_render_pass(&surface_texture, &mut encoder);
+            let mut render_pass = self.targets.create_render_pass(
+                &self.device,
+                &self.queue,
+                &surface_textures,
+                &mut encoder,
+                &mut self.textures,
+                target,
+            );
 
             render_pass.set_bind_group(0, &self.global_bind_group.bind_group, &[]);
             render_pass.set_bind_group(1, &self.primitive_bind_group.bind_group, &[]);
@@ -122,6 +103,9 @@ impl<'window> Renderer<'window> {
             let mut matrices = Vec::with_capacity(render_list.len() * 16);
             let mut batch_start = 0u32;
             let mut indices = 0..0;
+
+            let mut current_material_ptr: Option<*const Material> = None;
+            let mut current_geometry_ptr: Option<*const Geometry> = None;
 
             for (i, render_item) in render_list.iter().enumerate() {
                 let geometry = render_item.geometry.borrow();
@@ -152,7 +136,6 @@ impl<'window> Renderer<'window> {
                     let pipeline = self.pipelines.set_pipeline(
                         &self.device,
                         &render_item.material,
-                        self.surface_config.format,
                         &gpu_geometry.vertex_buffer_layouts,
                         &[
                             &self.global_bind_group.bind_group_layout,
@@ -198,6 +181,7 @@ impl<'window> Renderer<'window> {
         }
 
         self.queue.submit(Some(encoder.finish()));
-        surface_texture.present();
+
+        surface_textures.present();
     }
 }

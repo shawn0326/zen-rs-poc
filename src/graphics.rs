@@ -24,7 +24,4 @@ pub use material::Material;
 pub(crate) use material::MaterialId;
 pub use primitive::Primitive;
 pub(crate) use texture::TextureId;
-pub use texture::{
-    SurfaceTextureRef, Texture, Texture1DData, Texture2DData, Texture3DData, TextureCubeData,
-    TextureRef, TextureSource,
-};
+pub use texture::{Texture, TextureRef, TextureSource};

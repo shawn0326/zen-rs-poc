@@ -3,12 +3,14 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use crate::graphics::{Material, MaterialId};
 
 pub(super) struct Pipelines {
+    format: wgpu::TextureFormat,
     map: HashMap<MaterialId, wgpu::RenderPipeline>,
 }
 
 impl Pipelines {
-    pub fn new() -> Self {
+    pub fn new(format: wgpu::TextureFormat) -> Self {
         Self {
+            format,
             map: HashMap::new(),
         }
     }
@@ -17,7 +19,6 @@ impl Pipelines {
         &mut self,
         device: &wgpu::Device,
         material: &Rc<RefCell<Material>>,
-        format: wgpu::TextureFormat,
         vertex_buffer_layout: &[wgpu::VertexBufferLayout],
         bindgroup_layout: &[&wgpu::BindGroupLayout],
     ) -> &wgpu::RenderPipeline {
@@ -59,7 +60,7 @@ impl Pipelines {
                         entry_point: Some("fs_main"),
                         targets: &[Some(wgpu::ColorTargetState {
                             // 4.
-                            format,
+                            format: self.format,
                             blend: Some(wgpu::BlendState::REPLACE),
                             write_mask: wgpu::ColorWrites::ALL,
                         })],
