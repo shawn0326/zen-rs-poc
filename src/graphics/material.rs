@@ -1,4 +1,4 @@
-use super::Texture;
+use super::TextureRef;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -7,7 +7,7 @@ define_id!(MaterialId);
 #[non_exhaustive]
 pub struct Material {
     id: MaterialId,
-    texture: Option<Rc<RefCell<Texture>>>,
+    texture: Option<TextureRef>,
 }
 
 impl Material {
@@ -22,11 +22,11 @@ impl Material {
         self.id
     }
 
-    pub fn set_texture(&mut self, texture: Rc<RefCell<Texture>>) {
+    pub fn set_texture(&mut self, texture: TextureRef) {
         self.texture = Some(texture);
     }
 
-    pub fn texture(&self) -> Option<Rc<RefCell<Texture>>> {
+    pub fn texture(&self) -> Option<TextureRef> {
         self.texture.as_ref().cloned()
     }
 }

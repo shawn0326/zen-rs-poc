@@ -1,4 +1,4 @@
-use crate::graphics::{ImageSource, Texture, TextureId};
+use crate::graphics::{Texture, Texture2DData, TextureId, TextureSource};
 use std::collections::HashMap;
 
 pub(super) struct Textures {
@@ -22,14 +22,13 @@ impl Textures {
     ) -> &GpuTexture {
         let texture_id = texture.id();
 
-        if let Some(source) = texture.source() {
-            self.map.entry(texture_id).or_insert_with(|| {
+        match texture.source() {
+            TextureSource::D2(source) => self.map.entry(texture_id).or_insert_with(|| {
                 let gpu_texture = GpuTexture::new(device, (source.width, source.height));
                 gpu_texture.upload(queue, source);
                 gpu_texture
-            })
-        } else {
-            &self.default_gpu_texture
+            }),
+            _ => &self.default_gpu_texture,
         }
     }
 }
@@ -82,7 +81,7 @@ impl GpuTexture {
         }
     }
 
-    pub fn upload(&self, queue: &wgpu::Queue, source: &ImageSource) -> &Self {
+    pub fn upload(&self, queue: &wgpu::Queue, source: &Texture2DData) -> &Self {
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.texture,

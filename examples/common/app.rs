@@ -70,10 +70,12 @@ impl<'window> App<'window> {
 
         let diffuse_bytes = include_bytes!("../../assets/textures/logo.jpg");
         let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
+        let diffuse_dimensions = diffuse_image.dimensions();
 
-        let texture = Texture::from_data(
+        let texture = Texture::from_2d_data(
             diffuse_image.to_rgba8().into_raw(),
-            diffuse_image.dimensions(),
+            diffuse_dimensions.0,
+            diffuse_dimensions.1,
         );
 
         let geometry = Geometry::create_test_shape();
