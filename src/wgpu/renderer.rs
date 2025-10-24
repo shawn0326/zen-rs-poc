@@ -50,6 +50,8 @@ impl<'surf> Renderer<'surf> {
             .await
             .unwrap();
 
+        println!("{:?}", surface.get_capabilities(&adapter));
+
         let mut surfaces = Surfaces::new();
         let geometries = Geometries::new();
         let pipelines = Pipelines::new(surface.get_capabilities(&adapter).formats[0]);
