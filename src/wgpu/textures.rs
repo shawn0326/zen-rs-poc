@@ -1,4 +1,4 @@
-use crate::graphics::{Texture, TextureId, TextureSource};
+use crate::graphics::{Texture, TextureFormat, TextureId, TextureSource};
 use std::collections::HashMap;
 
 pub(super) struct Textures {
@@ -9,7 +9,7 @@ pub(super) struct Textures {
 impl Textures {
     pub fn new(device: &wgpu::Device) -> Self {
         Self {
-            default_gpu_texture: GpuTexture::new(device, (1, 1)),
+            default_gpu_texture: GpuTexture::new(device, (1, 1), TextureFormat::Rgba8Unorm),
             map: HashMap::new(),
         }
     }
@@ -28,10 +28,22 @@ impl Textures {
                 width,
                 height,
             } => self.map.entry(texture_id).or_insert_with(|| {
-                let gpu_texture = GpuTexture::new(device, (*width, *height));
+                let gpu_texture = GpuTexture::new(device, (*width, *height), texture.format());
                 gpu_texture.upload(queue, data, *width, *height);
                 gpu_texture
             }),
+            TextureSource::Render { width, height } => {
+                if let Some(existing) = self.map.get(&texture_id) {
+                    let desc_size = existing.descriptor.size;
+                    if desc_size.width != *width || desc_size.height != *height {
+                        self.map.remove(&texture_id);
+                    }
+                }
+
+                self.map
+                    .entry(texture_id)
+                    .or_insert_with(|| GpuTexture::new(device, (*width, *height), texture.format()))
+            }
             _ => &self.default_gpu_texture,
         }
     }
@@ -45,7 +57,7 @@ pub(super) struct GpuTexture {
 }
 
 impl GpuTexture {
-    pub fn new(device: &wgpu::Device, (width, height): (u32, u32)) -> Self {
+    pub fn new(device: &wgpu::Device, (width, height): (u32, u32), format: TextureFormat) -> Self {
         let size = wgpu::Extent3d {
             width,
             height,
@@ -58,8 +70,10 @@ impl GpuTexture {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            format: texture_format_to_wgpu_format(format),
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         };
 
@@ -114,5 +128,16 @@ impl GpuTexture {
 
     pub fn get_sampler_binding_type(&self) -> wgpu::SamplerBindingType {
         wgpu::SamplerBindingType::Filtering
+    }
+}
+
+fn texture_format_to_wgpu_format(format: TextureFormat) -> wgpu::TextureFormat {
+    match format {
+        TextureFormat::Bgra8UnormSrgb => wgpu::TextureFormat::Bgra8UnormSrgb,
+        TextureFormat::Rgba8UnormSrgb => wgpu::TextureFormat::Rgba8UnormSrgb,
+        TextureFormat::Bgra8Unorm => wgpu::TextureFormat::Bgra8Unorm,
+        TextureFormat::Rgba8Unorm => wgpu::TextureFormat::Rgba8Unorm,
+        TextureFormat::Depth24Plus => wgpu::TextureFormat::Depth24Plus,
+        TextureFormat::Depth24PlusStencil8 => wgpu::TextureFormat::Depth24PlusStencil8,
     }
 }

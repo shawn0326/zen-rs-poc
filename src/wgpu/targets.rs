@@ -71,7 +71,9 @@ impl Targets {
                 let texture = depth_stencil_attachment.texture.borrow();
                 let gpu_texture = textures.get_gpu_texture(device, queue, &*texture);
                 Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &gpu_texture.view,
+                    view: &gpu_texture
+                        .texture
+                        .create_view(&wgpu::TextureViewDescriptor::default()),
                     depth_ops: Some(wgpu::Operations {
                         load: match depth_stencil_attachment.depth_ops.load {
                             LoadOp::Clear(value) => wgpu::LoadOp::Clear(value),

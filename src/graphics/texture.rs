@@ -3,8 +3,6 @@ use std::rc::Rc;
 
 define_id!(TextureId);
 
-pub type TextureRef = Rc<RefCell<Texture>>;
-
 #[derive(Clone)]
 pub enum TextureSource {
     D1 {
@@ -31,50 +29,64 @@ pub enum TextureSource {
         width: u32,
         height: u32,
     },
+    Render {
+        width: u32,
+        height: u32,
+    },
     Empty,
 }
+
+pub type TextureRef = Rc<RefCell<Texture>>;
 
 pub struct Texture {
     id: TextureId,
     source: TextureSource,
+    format: TextureFormat,
 }
 
 impl Texture {
-    pub fn new() -> TextureRef {
-        Rc::new(RefCell::new(Self {
+    pub fn new() -> Self {
+        Self {
             id: TextureId::new(),
             source: TextureSource::Empty,
-        }))
+            format: TextureFormat::Rgba8UnormSrgb,
+        }
     }
 
-    pub fn from_2d_data(data: Vec<u8>, width: u32, height: u32) -> TextureRef {
-        Rc::new(RefCell::new(Self {
-            id: TextureId::new(),
-            source: TextureSource::D2 {
-                data,
-                width,
-                height,
-            },
-        }))
+    pub fn with_source(mut self, source: TextureSource) -> Self {
+        self.source = source;
+        self
     }
 
-    pub fn from_surface(surface_id: u32, width: u32, height: u32) -> TextureRef {
-        Rc::new(RefCell::new(Self {
-            id: TextureId::new(),
-            source: TextureSource::Surface {
-                surface_id,
-                width,
-                height,
-            },
-        }))
+    pub fn with_format(mut self, format: TextureFormat) -> Self {
+        self.format = format;
+        self
+    }
+
+    pub fn into_ref(self) -> TextureRef {
+        Rc::new(RefCell::new(self))
     }
 
     pub(crate) fn id(&self) -> TextureId {
         self.id
     }
 
+    pub fn set_source(&mut self, source: TextureSource) -> &mut Self {
+        self.source = source;
+        self
+    }
+
     pub fn source(&self) -> &TextureSource {
         &self.source
+    }
+
+    pub fn set_format(&mut self, format: TextureFormat) -> &mut Self {
+        self.format = format;
+        self
+    }
+
+    pub fn format(&self) -> TextureFormat {
+        self.format
     }
 }
 
@@ -83,21 +95,17 @@ impl Clone for Texture {
         Self {
             id: TextureId::new(),
             source: self.source.clone(),
+            format: self.format,
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_texture_clone() {
-        let tex1 = Texture::from_2d_data(vec![255; 16 * 16 * 4], 16, 16);
-        let tex1_id = tex1.borrow().id();
-        let tex2 = tex1.borrow().clone();
-        let tex2_id = tex2.id();
-
-        assert_ne!(tex1_id, tex2_id, "Cloned texture should have a new ID");
-    }
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TextureFormat {
+    Bgra8UnormSrgb,
+    Rgba8UnormSrgb,
+    Bgra8Unorm,
+    Rgba8Unorm,
+    Depth24Plus,
+    Depth24PlusStencil8,
 }

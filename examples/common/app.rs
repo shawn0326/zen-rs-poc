@@ -2,12 +2,11 @@ use image::GenericImageView;
 use rand::Rng;
 use std::sync::Arc;
 use winit::window::Window;
-use zen_rs_poc::scene::Camera;
 use zen_rs_poc::{
-    graphics::{Geometry, Material, Primitive, Texture},
+    graphics::{Geometry, Material, Primitive, Texture, TextureSource},
     math::{Color4, Vec3},
     render::{LoadOp, RenderCollector, RenderTarget},
-    scene::{Object3D, Scene},
+    scene::{Camera, Object3D, Scene},
     wgpu::Renderer,
 };
 
@@ -42,6 +41,7 @@ impl<'window> App<'window> {
         let mut screen_render_target = RenderTarget::from_surface(0, size.width, size.height);
         let color_attachment_0 = screen_render_target.color_attachments.get_mut(0).unwrap();
         color_attachment_0.ops.load = LoadOp::Clear(Color4::new(0.1, 0.2, 0.3, 1.0));
+        screen_render_target.with_depth24();
 
         let render_collector = RenderCollector {};
 
@@ -74,11 +74,13 @@ impl<'window> App<'window> {
         let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
         let diffuse_dimensions = diffuse_image.dimensions();
 
-        let texture = Texture::from_2d_data(
-            diffuse_image.to_rgba8().into_raw(),
-            diffuse_dimensions.0,
-            diffuse_dimensions.1,
-        );
+        let texture = Texture::new()
+            .with_source(TextureSource::D2 {
+                data: diffuse_image.to_rgba8().into_raw(),
+                width: diffuse_dimensions.0,
+                height: diffuse_dimensions.1,
+            })
+            .into_ref();
 
         let geometry = Geometry::create_test_shape();
         let geometry2 = Geometry::create_unit_quad();
