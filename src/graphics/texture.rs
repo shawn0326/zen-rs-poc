@@ -1,40 +1,11 @@
+mod format;
+mod source;
+pub use format::TextureFormat;
+pub use source::TextureSource;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 define_id!(TextureId);
-
-#[derive(Clone)]
-pub enum TextureSource {
-    D1 {
-        data: Vec<u8>,
-        width: u32,
-    },
-    D2 {
-        data: Vec<u8>,
-        width: u32,
-        height: u32,
-    },
-    D3 {
-        data: Vec<u8>,
-        width: u32,
-        height: u32,
-        depth: u32,
-    },
-    Cube {
-        data: Vec<u8>,
-        size: u32,
-    },
-    Surface {
-        surface_id: u32,
-        width: u32,
-        height: u32,
-    },
-    Render {
-        width: u32,
-        height: u32,
-    },
-    Empty,
-}
 
 pub type TextureRef = Rc<RefCell<Texture>>;
 
@@ -98,14 +69,4 @@ impl Clone for Texture {
             format: self.format,
         }
     }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum TextureFormat {
-    Bgra8UnormSrgb,
-    Rgba8UnormSrgb,
-    Bgra8Unorm,
-    Rgba8Unorm,
-    Depth24Plus,
-    Depth24PlusStencil8,
 }

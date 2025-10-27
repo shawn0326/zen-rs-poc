@@ -14,7 +14,6 @@ macro_rules! define_id {
 }
 
 mod geometry;
-mod geometry_factory;
 mod material;
 mod primitive;
 mod texture;
