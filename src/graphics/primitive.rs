@@ -1,43 +1,29 @@
-use std::{cell::RefCell, fmt::Debug, rc::Rc};
+use super::{GeometryRef, MaterialRef};
 
+#[derive(Clone)]
 pub struct Primitive {
-    geometry: Rc<RefCell<super::Geometry>>,
-    material: Rc<RefCell<super::Material>>,
+    geometry: GeometryRef,
+    material: MaterialRef,
 }
 
 impl Primitive {
-    pub fn new(
-        geometry: &Rc<RefCell<super::Geometry>>,
-        material: &Rc<RefCell<super::Material>>,
-    ) -> Self {
-        Self {
-            geometry: Rc::clone(geometry),
-            material: Rc::clone(material),
-        }
+    pub fn new(geometry: GeometryRef, material: MaterialRef) -> Self {
+        Self { geometry, material }
     }
 
-    pub fn geometry(&self) -> Rc<RefCell<super::Geometry>> {
-        Rc::clone(&self.geometry)
+    pub fn set_geometry(&mut self, geometry: GeometryRef) {
+        self.geometry = geometry;
     }
 
-    pub fn material(&self) -> Rc<RefCell<super::Material>> {
-        Rc::clone(&self.material)
+    pub fn geometry(&self) -> &GeometryRef {
+        &self.geometry
     }
 
-    pub fn set_geometry(&mut self, geometry: &Rc<RefCell<super::Geometry>>) {
-        self.geometry = Rc::clone(geometry);
+    pub fn set_material(&mut self, material: MaterialRef) {
+        self.material = material;
     }
 
-    pub fn set_material(&mut self, material: &Rc<RefCell<super::Material>>) {
-        self.material = Rc::clone(material);
-    }
-}
-
-impl Debug for Primitive {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Primitive")
-            .field("geometry", &Rc::as_ptr(&self.geometry))
-            .field("material", &Rc::as_ptr(&self.material))
-            .finish()
+    pub fn material(&self) -> &MaterialRef {
+        &self.material
     }
 }

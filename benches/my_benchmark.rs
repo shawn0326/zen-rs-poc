@@ -11,7 +11,7 @@ const PYRAMID_LEVELS: usize = 8;
 fn build_pyramid_scene() -> Scene {
     let scene = Scene::new();
     let geometry = Geometry::create_unit_cube();
-    let material = Material::new();
+    let material = Material::new().to_ref();
 
     fn build_level(
         parent: &Rc<Object3D>,
@@ -26,7 +26,7 @@ fn build_pyramid_scene() -> Scene {
         let children_count = max_levels - current_level;
         for _ in 0..children_count {
             let obj = Object3D::new();
-            let primitive = Primitive::new(geometry, material);
+            let primitive = Primitive::new(geometry.clone(), material.clone());
             obj.primitives.borrow_mut().push(primitive);
             Object3D::add(parent, &obj);
             build_level(&obj, geometry, material, current_level + 1, max_levels);

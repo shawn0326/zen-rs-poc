@@ -1,7 +1,5 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::{
-    graphics::{Geometry, Material},
+    graphics::{GeometryRef, MaterialRef},
     math::Mat4,
     scene::{Object3D, Scene},
 };
@@ -33,6 +31,6 @@ impl RenderCollector {
 
 pub struct RenderItem {
     pub world_matrix: Mat4,
-    pub geometry: Rc<RefCell<Geometry>>,
-    pub material: Rc<RefCell<Material>>,
+    pub geometry: GeometryRef,
+    pub material: MaterialRef,
 }

@@ -36,29 +36,29 @@ pub(super) struct GpuGeometry {
 impl GpuGeometry {
     pub fn new(device: &wgpu::Device, geometry: &Geometry) -> Self {
         let positions = geometry
-            .get_attribute(&AttributeKey::Positions)
+            .get_attribute(AttributeKey::Positions)
             .expect("Geometry must have positions");
         let tex_coords = geometry
-            .get_attribute(&AttributeKey::TexCoords)
+            .get_attribute(AttributeKey::TexCoords)
             .expect("Geometry must have texture coordinates");
         let colors = geometry
-            .get_attribute(&AttributeKey::Colors)
+            .get_attribute(AttributeKey::Colors)
             .expect("Geometry must have colors");
-        let indices = geometry.get_indices();
+        let indices = geometry.indices().expect("Geometry must have indices");
 
         let positions_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&positions.data),
+            contents: bytemuck::cast_slice(&positions.data()),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let tex_coords_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&tex_coords.data),
+            contents: bytemuck::cast_slice(&tex_coords.data()),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let colors_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&colors.data),
+            contents: bytemuck::cast_slice(&colors.data()),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
