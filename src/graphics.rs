@@ -18,7 +18,7 @@ mod material;
 mod primitive;
 mod texture;
 pub(crate) use geometry::GeometryId;
-pub use geometry::{Attribute, AttributeKey, Geometry, GeometryRef};
+pub use geometry::{Attribute, AttributeKey, Geometry, GeometryRef, VertexBuffer, VertexBufferRef};
 pub(crate) use material::MaterialId;
 pub use material::{Material, MaterialRef};
 pub use primitive::Primitive;

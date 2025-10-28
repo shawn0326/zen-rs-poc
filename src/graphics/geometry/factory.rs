@@ -1,21 +1,33 @@
-use super::{Attribute, AttributeKey, Geometry, GeometryRef};
+use super::{Attribute, AttributeKey, Geometry, GeometryRef, VertexBuffer};
 
 impl Geometry {
     pub fn create_unit_quad() -> GeometryRef {
-        let positions = Attribute::new()
+        let positions_buffer = VertexBuffer::new()
             .with_data(vec![
                 -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
             ])
+            .with_stride(3)
+            .into_ref();
+        let positions = Attribute::new()
+            .with_buffer(positions_buffer)
             .with_components(3);
 
-        let tex_coords = Attribute::new()
+        let tex_coords_buffer = VertexBuffer::new()
             .with_data(vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0])
+            .with_stride(2)
+            .into_ref();
+        let tex_coords = Attribute::new()
+            .with_buffer(tex_coords_buffer)
             .with_components(2);
 
-        let colors = Attribute::new()
+        let colors_buffer = VertexBuffer::new()
             .with_data(vec![
                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
             ])
+            .with_stride(3)
+            .into_ref();
+        let colors = Attribute::new()
+            .with_buffer(colors_buffer)
             .with_components(3);
 
         Self::new()
@@ -35,7 +47,7 @@ impl Geometry {
         let hh = height / 2.0;
         let hd = depth / 2.0;
 
-        let positions = Attribute::new()
+        let positions_buffer = VertexBuffer::new()
             .with_data(vec![
                 -hw, -hh, -hd, hw, -hh, -hd, hw, hh, -hd, -hw, hh, -hd, // Back face
                 -hw, -hh, hd, hw, -hh, hd, hw, hh, hd, -hw, hh, hd, // Front face
@@ -44,16 +56,25 @@ impl Geometry {
                 -hw, -hh, -hd, -hw, hh, -hd, -hw, hh, hd, -hw, -hh, hd, // Left face
                 hw, -hh, -hd, hw, hh, -hd, hw, hh, hd, hw, -hh, hd, // Right face
             ])
+            .with_stride(3)
+            .into_ref();
+        let positions = Attribute::new()
+            .with_buffer(positions_buffer)
             .with_components(3);
 
-        let tex_coords = Attribute::new()
+        let tex_coords_buffer = VertexBuffer::new()
             .with_data(vec![
                 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
                 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
                 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
             ])
+            .with_stride(2)
+            .into_ref();
+        let tex_coords = Attribute::new()
+            .with_buffer(tex_coords_buffer)
             .with_components(2);
-        let colors = Attribute::new()
+
+        let colors_buffer = VertexBuffer::new()
             .with_data(vec![
                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
@@ -61,6 +82,10 @@ impl Geometry {
                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
             ])
+            .with_stride(3)
+            .into_ref();
+        let colors = Attribute::new()
+            .with_buffer(colors_buffer)
             .with_components(3);
 
         let indices = vec![

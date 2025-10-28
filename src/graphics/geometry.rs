@@ -1,9 +1,11 @@
 mod attribute;
 mod factory;
+mod vertex_buffer;
 pub use attribute::{Attribute, AttributeKey};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+pub use vertex_buffer::{VertexBuffer, VertexBufferRef};
 
 define_id!(GeometryId);
 

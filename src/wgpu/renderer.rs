@@ -138,7 +138,12 @@ impl<'surf> Renderer<'surf> {
                     let pipeline = self.pipelines.set_pipeline(
                         &self.device,
                         &render_item.material,
-                        &gpu_geometry.vertex_buffer_layouts,
+                        gpu_geometry
+                            .vertex_buffer_layouts
+                            .iter()
+                            .map(|vbl| vbl.as_wgpu_layout())
+                            .collect::<Vec<_>>()
+                            .as_slice(),
                         &[
                             &self.global_bind_group.bind_group_layout,
                             &self.primitive_bind_group.layout,

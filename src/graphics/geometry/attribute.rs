@@ -1,3 +1,5 @@
+use super::vertex_buffer::{VertexBuffer, VertexBufferRef};
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttributeKey {
     Positions,
@@ -33,20 +35,27 @@ impl ToString for AttributeKey {
 
 #[derive(Clone)]
 pub struct Attribute {
-    data: Vec<f32>,
+    buffer: VertexBufferRef,
+    offset: u8,
     components: u8,
 }
 
 impl Attribute {
     pub fn new() -> Self {
         Self {
-            data: Vec::new(),
+            buffer: VertexBuffer::new().into_ref(),
+            offset: 0,
             components: 0,
         }
     }
 
-    pub fn with_data(mut self, data: Vec<f32>) -> Self {
-        self.data = data;
+    pub fn with_buffer(mut self, buffer: VertexBufferRef) -> Self {
+        self.buffer = buffer;
+        self
+    }
+
+    pub fn with_offset(mut self, offset: u8) -> Self {
+        self.offset = offset;
         self
     }
 
@@ -55,13 +64,22 @@ impl Attribute {
         self
     }
 
-    pub fn set_data(&mut self, data: Vec<f32>) -> &mut Self {
-        self.data = data;
+    pub fn set_buffer(&mut self, buffer: VertexBufferRef) -> &mut Self {
+        self.buffer = buffer;
         self
     }
 
-    pub fn data(&self) -> &[f32] {
-        &self.data
+    pub fn buffer(&self) -> &VertexBufferRef {
+        &self.buffer
+    }
+
+    pub fn set_offset(&mut self, offset: u8) -> &mut Self {
+        self.offset = offset;
+        self
+    }
+
+    pub fn offset(&self) -> u8 {
+        self.offset
     }
 
     pub fn set_components(&mut self, components: u8) -> &mut Self {
@@ -71,13 +89,5 @@ impl Attribute {
 
     pub fn components(&self) -> u8 {
         self.components
-    }
-
-    pub fn vertex_count(&self) -> usize {
-        if self.components == 0 {
-            0
-        } else {
-            self.data.len() / self.components as usize
-        }
     }
 }

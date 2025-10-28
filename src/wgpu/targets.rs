@@ -84,16 +84,17 @@ impl Targets {
                             StoreOp::Discard => wgpu::StoreOp::Discard,
                         },
                     }),
-                    stencil_ops: Some(wgpu::Operations {
-                        load: match depth_stencil_attachment.stencil_ops.load {
-                            LoadOp::Clear(value) => wgpu::LoadOp::Clear(value),
-                            LoadOp::Load => wgpu::LoadOp::Load,
-                        },
-                        store: match depth_stencil_attachment.stencil_ops.store {
-                            StoreOp::Store => wgpu::StoreOp::Store,
-                            StoreOp::Discard => wgpu::StoreOp::Discard,
-                        },
-                    }),
+                    // stencil_ops: Some(wgpu::Operations {
+                    //     load: match depth_stencil_attachment.stencil_ops.load {
+                    //         LoadOp::Clear(value) => wgpu::LoadOp::Clear(value),
+                    //         LoadOp::Load => wgpu::LoadOp::Load,
+                    //     },
+                    //     store: match depth_stencil_attachment.stencil_ops.store {
+                    //         StoreOp::Store => wgpu::StoreOp::Store,
+                    //         StoreOp::Discard => wgpu::StoreOp::Discard,
+                    //     },
+                    // }),
+                    stencil_ops: None,
                 })
             }
             None => None,
