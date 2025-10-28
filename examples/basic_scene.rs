@@ -159,28 +159,6 @@ pub fn start() {
     console_error_panic_hook::set_once();
 
     wasm_bindgen_futures::spawn_local(async move {
-        // let window = wgpu::web_sys::window().unwrap_throw();
-        // let document = window.document().unwrap_throw();
-        // let canvas = document.create_element("canvas").unwrap_throw();
-        // let html_canvas_element: wgpu::web_sys::HtmlCanvasElement = canvas.unchecked_into();
-        // html_canvas_element.set_id("wgpu-canvas");
-        // html_canvas_element.set_width(800);
-        // html_canvas_element.set_height(600);
-        // let body = document.body().unwrap_throw();
-        // body.append_child(&html_canvas_element).unwrap_throw();
-
-        // let window_attributes = Window::default_attributes().with_canvas(Some(html_canvas_element));
-
-        // let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
-
-        // use winit::platform::web::WindowExtWebSys;
-        // let canvas = window.canvas().expect("no canvas on web");
-        // let doc = web_sys::window().unwrap().document().unwrap();
-        // doc.body().unwrap().append_child(&canvas).unwrap();
-
-        // let app = App::new_benchmark(window.clone()).await;
-        // app.window.request_redraw();
-
         console_log::init_with_level(log::Level::Debug).expect("Couldn't initialize logger");
 
         let event_loop = EventLoop::with_user_event().build().unwrap();
