@@ -7,6 +7,7 @@ edition = "2024"
 wgpu = "26"
 glam = "0.29"
 bytemuck = { version = "1.19", features = [ "derive" ] }
+zen_macro = { path = "crates/zen_macro" }
 
 [dev-dependencies]
 pollster = "0.4.0"
@@ -33,3 +34,8 @@ console_log = "1.0"
 [[bench]]
 name = "my_benchmark"
 harness = false
+
+[workspace]
+members = [
+    "crates/*"
+]

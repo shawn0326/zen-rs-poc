@@ -2810,7 +2810,20 @@ dependencies = [
  "web-sys",
  "wgpu",
  "winit",
+ "zen_macro",
 ]
+
+[[package]]
+name = "zen_macro"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "zen_types"
+version = "0.1.0"
 
 [[package]]
 name = "zerocopy"
