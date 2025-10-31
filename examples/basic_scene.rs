@@ -7,7 +7,6 @@ use winit::event::{ElementState, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
-use zen_macro::Shader;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -138,25 +137,9 @@ impl ApplicationHandler<App<'static>> for AppHandler {
     }
 }
 
-#[derive(Shader)]
-#[allow(dead_code)]
-struct PbrUniform {
-    color: [f32; 4],
-    metallic: f32,
-    roughness: f32,
-}
-
 fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        // let pbr_uniform = PbrUniform {
-        //     color: [1.0, 0.0, 0.0, 1.0],
-        //     metallic: 0.5,
-        //     roughness: 0.5,
-        // };
-
-        println!("{}", PbrUniform::wgsl_struct());
-
         let mut app_handler = AppHandler {
             app: None,
             fps_counter: common::FpsCounter::default(),
@@ -188,4 +171,30 @@ pub fn start() {
 
         event_loop.run_app(&mut app_handler).unwrap();
     });
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        #[derive(zen_macro::Uniforms)]
+        struct PbrUniform {
+            #[uniform]
+            albedo_color: [f32; 4],
+            #[uniform]
+            metallic: f32,
+            #[uniform]
+            roughness: f32,
+        }
+
+        let pbr_uniform = PbrUniform {
+            albedo_color: [1.0, 0.0, 0.0, 1.0],
+            metallic: 0.5,
+            roughness: 0.5,
+        };
+
+        println!("{}", PbrUniform::wgsl());
+        println!("{:?}", pbr_uniform.bindgroup_layout_entries());
+        println!("{:?}", pbr_uniform.bytes());
+    }
 }

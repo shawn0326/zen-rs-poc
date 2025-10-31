@@ -1,11 +1,20 @@
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{Data, DeriveInput, Fields, parse_macro_input};
+use quote::{format_ident, quote};
+use syn::{Attribute, Data, DeriveInput, Fields, parse_macro_input};
 
-#[proc_macro_derive(Shader, attributes(uniform))]
+#[proc_macro_derive(Uniforms, attributes(uniform))]
 pub fn shader_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
+    struct UniField {
+        name: String,
+        wgsl_ty: String,
+    }
+    struct TexField {
+        name: String,
+        sampler_binding: u32,
+        texture_binding: u32,
+    }
 
     let fields = match &input.data {
         Data::Struct(data) => match &data.fields {
@@ -15,36 +24,243 @@ pub fn shader_derive(input: TokenStream) -> TokenStream {
         _ => panic!("Only structs supported"),
     };
 
-    let mut wgsl_fields = Vec::new();
+    let mut uniform_fields = Vec::new();
+    let mut texture_fields = Vec::new();
+    let mut binding_idx: u32 = 1;
     for field in fields {
-        let field_name = field.ident.as_ref().unwrap().to_string();
-        let ty = quote!(#field.ty).to_string();
-        let wgsl_ty = if ty.contains("Vec4") || ty.contains("Color4") {
-            "vec4<f32>"
-        } else if ty.contains("Vec3") {
-            "vec3<f32>"
-        } else if ty.contains("Vec2") {
-            "vec2<f32>"
-        } else if ty.contains("f32") {
-            "f32"
-        } else if ty.contains("i32") {
-            "i32"
-        } else if ty.contains("u32") {
-            "u32"
-        } else {
+        let name = field.ident.as_ref().unwrap().to_string();
+        let is_uniform = field.attrs.iter().any(|attr| is_uniform_attr(attr));
+        let ty = &field.ty;
+        if !is_uniform {
             continue;
-        };
-        wgsl_fields.push(format!("    {}: {},", field_name, wgsl_ty));
+        }
+        if is_texture_ref(ty) {
+            let sampler_binding = binding_idx;
+            let texture_binding = binding_idx + 1;
+            texture_fields.push(TexField {
+                name: name,
+                sampler_binding,
+                texture_binding,
+            });
+            binding_idx += 2;
+            continue;
+        }
+        if let Some(wgsl_ty) = rust_ty_to_wgsl_ty(ty) {
+            uniform_fields.push(UniField {
+                name: name.clone(),
+                wgsl_ty: wgsl_ty.to_string(),
+            });
+        } else {
+            let ty_str = quote!(#ty).to_string();
+            return syn::Error::new_spanned(
+                &field.ident,
+                format!(
+                    "Unsupported uniform field type for field '{}': {}",
+                    name, ty_str
+                ),
+            )
+            .to_compile_error()
+            .into();
+        }
     }
-    let wgsl_struct = format!("struct {} {{\n{}\n}};", struct_name, wgsl_fields.join("\n"));
+
+    let wgsl_parts = {
+        let wgsl_struct_name = "MaterialUniforms";
+        let mut wgsl_struct_fields: Vec<String> = Vec::new();
+        for uf in &uniform_fields {
+            wgsl_struct_fields.push(format!("    {}: {},", uf.name, uf.wgsl_ty));
+        }
+        let struct_body = wgsl_struct_fields.join("\n");
+        let mut wgsl_parts: Vec<String> = Vec::new();
+        wgsl_parts.push(format!(
+            "struct {} {{\n{}\n}};",
+            wgsl_struct_name, struct_body
+        ));
+        wgsl_parts.push(format!(
+            "\n@group(2) @binding(0)\nvar<uniform> material: {};\n",
+            wgsl_struct_name
+        ));
+        for tf in &texture_fields {
+            wgsl_parts.push(format!(
+                "@group(2) @binding({}) var {}_sampler: sampler;",
+                tf.sampler_binding, tf.name
+            ));
+            wgsl_parts.push(format!(
+                "@group(2) @binding({}) var {}: texture_2d<f32>;",
+                tf.texture_binding, tf.name
+            ));
+        }
+        wgsl_parts
+    };
+
+    let layout_entries = {
+        let mut entries = Vec::new();
+
+        entries.push(quote! {
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None
+                },
+                count: None
+            }
+        });
+
+        for tf in &texture_fields {
+            let sampler_binding = tf.sampler_binding;
+            entries.push(quote! {
+                wgpu::BindGroupLayoutEntry {
+                    binding: #sampler_binding,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None
+                }
+            });
+            entries.push(quote! {
+                wgpu::BindGroupLayoutEntry {
+                    binding: #sampler_binding,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true }
+                    },
+                    count: None
+                }
+            });
+        }
+        entries
+    };
+
+    let bytes_body = if !uniform_fields.is_empty() {
+        let pack_fields: Vec<_> = uniform_fields
+            .iter()
+            .map(|uf| {
+                let field = format_ident!("{}", uf.name);
+                match uf.wgsl_ty.as_str() {
+                    "f32" => quote! { bytes.extend_from_slice(&self.#field.to_le_bytes()); },
+                    "i32" => quote! { bytes.extend_from_slice(&self.#field.to_le_bytes()); },
+                    "u32" => quote! { bytes.extend_from_slice(&self.#field.to_le_bytes()); },
+                    "vec2<f32>" | "vec3<f32>" | "vec4<f32>" => {
+                        quote! { bytes.extend_from_slice(bytemuck::cast_slice(&self.#field)); }
+                    }
+                    _ => quote! {},
+                }
+            })
+            .collect();
+        quote! {
+            let mut bytes = Vec::new();
+            #(#pack_fields)*
+            bytes
+        }
+    } else {
+        quote! { &[] }
+    };
 
     let expanded = quote! {
         impl #struct_name {
-            pub fn wgsl_struct() -> &'static str {
-                #wgsl_struct
+            pub fn wgsl() -> String {
+                let mut s = String::new();
+                #( s.push_str(#wgsl_parts); s.push_str("\n"); )*
+                s
+            }
+
+            pub fn bindgroup_layout_entries(&self) -> Vec<wgpu::BindGroupLayoutEntry> {
+                vec![#(#layout_entries),*]
+            }
+
+            /// Byte representation suitable for uploading a uniform buffer.
+            pub fn bytes(&self) -> Vec<u8> {
+                #bytes_body
             }
         }
     };
 
     expanded.into()
+}
+
+// Rust syn::Type -> Option<&'static str>
+fn rust_ty_to_wgsl_ty(ty: &syn::Type) -> Option<&'static str> {
+    use syn::{Expr, ExprLit, Lit, Type, TypeArray, TypePath};
+    match ty {
+        Type::Array(TypeArray { elem, len, .. }) => {
+            if let Type::Path(TypePath { path, .. }) = &**elem {
+                if path.is_ident("f32") {
+                    if let Expr::Lit(ExprLit {
+                        lit: Lit::Int(litint),
+                        ..
+                    }) = len
+                    {
+                        match litint.base10_parse::<usize>().ok() {
+                            Some(2) => Some("vec2<f32>"),
+                            Some(3) => Some("vec3<f32>"),
+                            Some(4) => Some("vec4<f32>"),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
+        Type::Path(TypePath { path, .. }) => {
+            if path.is_ident("f32") {
+                Some("f32")
+            } else if path.is_ident("i32") {
+                Some("i32")
+            } else if path.is_ident("u32") {
+                Some("u32")
+            } else if path.segments.len() == 1 {
+                let seg = &path.segments[0];
+                match seg.ident.to_string().as_str() {
+                    "Vec2" => Some("vec2<f32>"),
+                    "Vec3" => Some("vec3<f32>"),
+                    "Vec4" => Some("vec4<f32>"),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+// Option<TextureRef> or TextureRef
+fn is_texture_ref(ty: &syn::Type) -> bool {
+    use syn::{GenericArgument, PathArguments, Type, TypePath};
+    match ty {
+        Type::Path(TypePath { path, .. }) => {
+            if path.is_ident("TextureRef") {
+                return true;
+            }
+
+            if let Some(seg) = path.segments.last() {
+                if seg.ident == "Option" {
+                    if let PathArguments::AngleBracketed(ref ab) = seg.arguments {
+                        for arg in &ab.args {
+                            if let GenericArgument::Type(inner_ty) = arg {
+                                if is_texture_ref(inner_ty) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            false
+        }
+        _ => false,
+    }
+}
+
+fn is_uniform_attr(attr: &Attribute) -> bool {
+    attr.path().is_ident("uniform")
 }
