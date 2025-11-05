@@ -33,7 +33,13 @@ fn vs_main(
     return out;
 }
 
+@group(2) @binding(1)
+var s_diffuse: sampler;
+@group(2) @binding(2)
+var t_diffuse: texture_2d<f32>;
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    return vec4f(in.color, 1.0);
+    var color = textureSample(t_diffuse, s_diffuse, in.tex_coord);
+    return vec4f(color.rgb * in.color.rgb, color.a);
 }

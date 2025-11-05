@@ -6,8 +6,16 @@ define_id!(MaterialId);
 
 pub type MaterialRef = Rc<RefCell<Material>>;
 
+#[derive(zen_macro::Uniforms)]
 pub struct Material {
     id: MaterialId,
+    #[uniform]
+    albedo_color: [f32; 4],
+    #[uniform]
+    metallic: f32,
+    #[uniform]
+    roughness: f32,
+    #[uniform]
     texture: Option<TextureRef>,
 }
 
@@ -15,6 +23,9 @@ impl Material {
     pub fn new() -> Self {
         Self {
             id: MaterialId::new(),
+            albedo_color: [1.0, 1.0, 1.0, 1.0],
+            metallic: 0.0,
+            roughness: 1.0,
             texture: None,
         }
     }

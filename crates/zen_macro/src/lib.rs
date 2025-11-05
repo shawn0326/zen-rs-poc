@@ -111,6 +111,7 @@ pub fn shader_derive(input: TokenStream) -> TokenStream {
 
         for tf in &texture_fields {
             let sampler_binding = tf.sampler_binding;
+            let texture_binding = tf.texture_binding;
             entries.push(quote! {
                 wgpu::BindGroupLayoutEntry {
                     binding: #sampler_binding,
@@ -121,7 +122,7 @@ pub fn shader_derive(input: TokenStream) -> TokenStream {
             });
             entries.push(quote! {
                 wgpu::BindGroupLayoutEntry {
-                    binding: #sampler_binding,
+                    binding: #texture_binding,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         multisampled: false,
@@ -162,7 +163,7 @@ pub fn shader_derive(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         impl #struct_name {
-            pub fn wgsl() -> String {
+            pub fn wgsl(&self) -> String {
                 let mut s = String::new();
                 #( s.push_str(#wgsl_parts); s.push_str("\n"); )*
                 s

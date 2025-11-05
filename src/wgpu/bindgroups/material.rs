@@ -24,49 +24,28 @@ impl GpuMaterialBindGroup {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let mut layout_entries = vec![wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility: wgpu::ShaderStages::VERTEX,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
-        }];
+        let layout_entries = material.bindgroup_layout_entries();
 
         let mut entries = vec![wgpu::BindGroupEntry {
             binding: 0,
             resource: buffer.as_entire_binding(),
         }];
 
+        let gpu_texture;
         if let Some(texture) = material.texture() {
-            let gpu_texture = textures.get_gpu_texture(device, queue, &*texture.borrow());
-
-            layout_entries.push(wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: gpu_texture.create_binding_type(),
-                count: None,
-            });
-
-            layout_entries.push(wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Sampler(gpu_texture.get_sampler_binding_type()),
-                count: None,
-            });
-
-            entries.push(wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::TextureView(&gpu_texture.view),
-            });
-
-            entries.push(wgpu::BindGroupEntry {
-                binding: 2,
-                resource: wgpu::BindingResource::Sampler(&gpu_texture.sampler),
-            });
+            gpu_texture = textures.get_gpu_texture(device, queue, &*texture.borrow());
+        } else {
+            gpu_texture = textures.get_default_gpu_texture();
         }
+        entries.push(wgpu::BindGroupEntry {
+            binding: 1,
+            resource: wgpu::BindingResource::Sampler(&gpu_texture.sampler),
+        });
+
+        entries.push(wgpu::BindGroupEntry {
+            binding: 2,
+            resource: wgpu::BindingResource::TextureView(&gpu_texture.view),
+        });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &layout_entries,

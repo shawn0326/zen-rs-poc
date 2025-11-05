@@ -7,11 +7,19 @@ pub(super) struct Textures {
 }
 
 impl Textures {
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+        let default_gpu_texture = GpuTexture::new(device, (1, 1), TextureFormat::Rgba8Unorm);
+
+        default_gpu_texture.upload(queue, &vec![255, 255, 255, 255], 1, 1);
+
         Self {
-            default_gpu_texture: GpuTexture::new(device, (1, 1), TextureFormat::Rgba8Unorm),
+            default_gpu_texture,
             map: HashMap::new(),
         }
+    }
+
+    pub fn get_default_gpu_texture(&self) -> &GpuTexture {
+        &self.default_gpu_texture
     }
 
     pub fn get_gpu_texture(
@@ -116,18 +124,6 @@ impl GpuTexture {
             self.descriptor.size,
         );
         &self
-    }
-
-    pub fn create_binding_type(&self) -> wgpu::BindingType {
-        wgpu::BindingType::Texture {
-            multisampled: false,
-            view_dimension: wgpu::TextureViewDimension::D2,
-            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-        }
-    }
-
-    pub fn get_sampler_binding_type(&self) -> wgpu::SamplerBindingType {
-        wgpu::SamplerBindingType::Filtering
     }
 }
 

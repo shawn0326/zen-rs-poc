@@ -175,25 +175,25 @@ pub fn start() {
 
 #[cfg(test)]
 mod tests {
+    #[derive(zen_macro::Uniforms)]
+    struct PbrUniform {
+        #[uniform]
+        albedo_color: [f32; 4],
+        #[uniform]
+        metallic: f32,
+        #[uniform]
+        roughness: f32,
+    }
+
     #[test]
     fn it_works() {
-        #[derive(zen_macro::Uniforms)]
-        struct PbrUniform {
-            #[uniform]
-            albedo_color: [f32; 4],
-            #[uniform]
-            metallic: f32,
-            #[uniform]
-            roughness: f32,
-        }
-
         let pbr_uniform = PbrUniform {
             albedo_color: [1.0, 0.0, 0.0, 1.0],
             metallic: 0.5,
             roughness: 0.5,
         };
 
-        println!("{}", PbrUniform::wgsl());
+        println!("{}", pbr_uniform.wgsl());
         println!("{:?}", pbr_uniform.bindgroup_layout_entries());
         println!("{:?}", pbr_uniform.bytes());
     }

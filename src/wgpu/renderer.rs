@@ -59,7 +59,7 @@ impl<'surf> Renderer<'surf> {
         let global_bind_group = GpuGlobalBindGroup::new(&device);
         let primitive_bind_group = GpuPrimitiveBindGroup::new(&device);
         let material_bind_groups = MaterialBindGroups::new();
-        let textures = Textures::new(&device);
+        let textures = Textures::new(&device, &queue);
 
         surfaces.add_surface(surface);
 
