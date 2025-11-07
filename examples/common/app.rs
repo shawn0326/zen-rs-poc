@@ -4,9 +4,9 @@ use std::sync::Arc;
 use winit::window::Window;
 use zen_rs_poc::{
     graphics::{Geometry, Material, Primitive, Texture, TextureSource},
-    math::{Color4, Vec3},
+    math::{Color4, Mat4, Vec3},
     render::{LoadOp, RenderCollector, RenderTarget},
-    scene::{Camera, Object3D, Scene},
+    scene::{Camera, Object3D, Perspective, Scene},
     wgpu::Renderer,
 };
 
@@ -17,6 +17,7 @@ pub struct App<'window> {
     render_collector: RenderCollector,
     pub scene: Scene,
     pub camera: Camera,
+    pub camera_projection: Perspective,
 }
 
 impl<'window> App<'window> {
@@ -47,15 +48,17 @@ impl<'window> App<'window> {
 
         let scene = Scene::new();
 
-        let camera = Camera {
+        let mut camera = Camera {
             eye: (0.0, 0.0, 5.0).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: Vec3::Y,
-            aspect: size.width as f32 / size.height as f32,
-            fovy: 45.0,
-            near: 0.1,
-            far: 100.0,
+            proj: Mat4::IDENTITY,
         };
+
+        let camera_projection =
+            Perspective::new(45.0, size.width as f32 / size.height as f32, 0.1, 100.0);
+
+        camera.set_projection(&camera_projection);
 
         Self {
             window,
@@ -64,6 +67,7 @@ impl<'window> App<'window> {
             render_collector,
             scene,
             camera,
+            camera_projection,
         }
     }
 
@@ -119,6 +123,8 @@ impl<'window> App<'window> {
     }
 
     pub fn set_window_resized(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        self.camera_projection.aspect = new_size.width as f32 / new_size.height as f32;
+        self.camera.set_projection(&self.camera_projection);
         self.screen_render_target
             .resize(new_size.width, new_size.height);
     }
