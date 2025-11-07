@@ -33,6 +33,14 @@ fn vs_main(
     return out;
 }
 
+struct MaterialUniforms {
+    albedo_color: vec4<f32>,
+    metallic: f32,
+    roughness: f32,
+}
+
+@group(2) @binding(0)
+var<uniform> material: MaterialUniforms;
 @group(2) @binding(1)
 var s_diffuse: sampler;
 @group(2) @binding(2)
@@ -40,6 +48,6 @@ var t_diffuse: texture_2d<f32>;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    var color = textureSample(t_diffuse, s_diffuse, in.tex_coord);
+    var color = textureSample(t_diffuse, s_diffuse, in.tex_coord) * material.albedo_color;
     return vec4f(color.rgb * in.color.rgb, color.a);
 }

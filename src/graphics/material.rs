@@ -10,23 +10,23 @@ pub type MaterialRef = Rc<RefCell<Material>>;
 pub struct Material {
     id: MaterialId,
     #[uniform]
-    albedo_color: [f32; 4],
+    albedo_factor: [f32; 4],
     #[uniform]
     metallic: f32,
     #[uniform]
     roughness: f32,
     #[uniform]
-    texture: Option<TextureRef>,
+    albedo_texture: Option<TextureRef>,
 }
 
 impl Material {
     pub fn new() -> Self {
         Self {
             id: MaterialId::new(),
-            albedo_color: [1.0, 1.0, 1.0, 1.0],
+            albedo_factor: [1.0, 1.0, 1.0, 1.0],
             metallic: 0.0,
             roughness: 1.0,
-            texture: None,
+            albedo_texture: None,
         }
     }
 
@@ -38,12 +38,17 @@ impl Material {
         self.id
     }
 
+    pub fn set_albedo_factor(&mut self, color: [f32; 4]) -> &mut Self {
+        self.albedo_factor = color;
+        self
+    }
+
     pub fn set_texture(&mut self, texture: TextureRef) -> &mut Self {
-        self.texture = Some(texture);
+        self.albedo_texture = Some(texture);
         self
     }
 
     pub fn texture(&self) -> Option<&TextureRef> {
-        self.texture.as_ref()
+        self.albedo_texture.as_ref()
     }
 }

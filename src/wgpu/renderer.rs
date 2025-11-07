@@ -8,6 +8,7 @@ use super::{
 };
 use crate::{
     graphics::{Geometry, Material},
+    math::Mat4,
     render::{RenderItem, RenderTarget},
     scene::Camera,
 };
@@ -99,10 +100,13 @@ impl<'surf> Renderer<'surf> {
                 target,
             );
 
+            let mut matrices: Vec<Mat4> = Vec::with_capacity(render_list.len());
+            self.primitive_bind_group
+                .ensure_capacity(&self.device, render_list.len());
+
             render_pass.set_bind_group(0, &self.global_bind_group.bind_group, &[]);
             render_pass.set_bind_group(1, &self.primitive_bind_group.bind_group, &[]);
 
-            let mut matrices = Vec::with_capacity(render_list.len() * 16);
             let mut batch_start = 0u32;
             let mut indices = 0..0;
 
@@ -174,7 +178,7 @@ impl<'surf> Renderer<'surf> {
                     indices = 0..gpu_geometry.num_indices;
                 }
 
-                matrices.extend_from_slice(render_item.world_matrix.to_cols_array().as_slice());
+                matrices.push(render_item.world_matrix);
             }
 
             if !render_list.is_empty() {

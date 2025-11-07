@@ -49,7 +49,7 @@ impl<'window> App<'window> {
         let scene = Scene::new();
 
         let mut camera = Camera {
-            eye: (0.0, 0.0, 5.0).into(),
+            eye: (0.0, 0.0, 10.0).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: Vec3::Y,
             proj: Mat4::IDENTITY,
@@ -90,6 +90,9 @@ impl<'window> App<'window> {
         let geometry2 = Geometry::create_unit_quad();
         let material = Material::new().to_ref();
         let material2 = Material::new().to_ref();
+        material
+            .borrow_mut()
+            .set_albedo_factor([1.0, 0.5, 0.5, 1.0]);
         material2.borrow_mut().set_texture(texture);
 
         let mut rng = rand::thread_rng();

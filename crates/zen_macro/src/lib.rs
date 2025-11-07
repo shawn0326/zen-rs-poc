@@ -137,25 +137,73 @@ pub fn shader_derive(input: TokenStream) -> TokenStream {
     };
 
     let bytes_body = if !uniform_fields.is_empty() {
-        let pack_fields: Vec<_> = uniform_fields
-            .iter()
-            .map(|uf| {
-                let field = format_ident!("{}", uf.name);
-                match uf.wgsl_ty.as_str() {
-                    "f32" => quote! { bytes.extend_from_slice(&self.#field.to_le_bytes()); },
-                    "i32" => quote! { bytes.extend_from_slice(&self.#field.to_le_bytes()); },
-                    "u32" => quote! { bytes.extend_from_slice(&self.#field.to_le_bytes()); },
-                    "vec2<f32>" | "vec3<f32>" | "vec4<f32>" => {
-                        quote! { bytes.extend_from_slice(bytemuck::cast_slice(&self.#field)); }
+        let mut write_fields_ts = Vec::new();
+        let mut offset: usize = 0;
+        let mut struct_align: usize = 1;
+
+        for uf in &uniform_fields {
+            let (align, slot_size) = match uf.wgsl_ty.as_str() {
+                "f32" | "i32" | "u32" => (4, 4),
+                "vec2<f32>" => (8, 8),
+                "vec3<f32>" => (16, 16),
+                "vec4<f32>" => (16, 16),
+                _ => (4, 4),
+            };
+            if align > struct_align {
+                struct_align = align;
+            }
+            let aligned_off = ((offset + align - 1) / align) * align;
+
+            let field_ident = format_ident!("{}", uf.name);
+            let write = match uf.wgsl_ty.as_str() {
+                "f32" | "i32" | "u32" => {
+                    quote! {
+                        {
+                            let b = self.#field_ident.to_le_bytes();
+                            dst[#aligned_off as usize .. (#aligned_off as usize + 4)]
+                                .copy_from_slice(&b);
+                        }
                     }
-                    _ => quote! {},
                 }
-            })
-            .collect();
+                "vec2<f32>" => {
+                    quote! {
+                        {
+                            let src = bytemuck::cast_slice(&self.#field_ident);
+                            dst[#aligned_off as usize .. (#aligned_off as usize + 8)]
+                                .copy_from_slice(src);
+                        }
+                    }
+                }
+                "vec3<f32>" => {
+                    quote! {
+                        {
+                            let src = bytemuck::cast_slice(&self.#field_ident);
+                            dst[#aligned_off as usize .. (#aligned_off as usize + 12)]
+                                .copy_from_slice(src);
+                        }
+                    }
+                }
+                "vec4<f32>" => {
+                    quote! {
+                        {
+                            let src = bytemuck::cast_slice(&self.#field_ident);
+                            dst[#aligned_off as usize .. (#aligned_off as usize + 16)]
+                                .copy_from_slice(src);
+                        }
+                    }
+                }
+                _ => quote! {},
+            };
+            write_fields_ts.push(write);
+            offset = aligned_off + slot_size;
+        }
+
+        let total_size = ((offset + struct_align - 1) / struct_align) * struct_align;
+
         quote! {
-            let mut bytes = Vec::new();
-            #(#pack_fields)*
-            bytes
+            let mut dst = vec![0u8; #total_size as usize];
+            #(#write_fields_ts)*
+            dst
         }
     } else {
         quote! { &[] }
@@ -174,7 +222,7 @@ pub fn shader_derive(input: TokenStream) -> TokenStream {
             }
 
             /// Byte representation suitable for uploading a uniform buffer.
-            pub fn bytes(&self) -> Vec<u8> {
+            pub fn to_std140_bytes(&self) -> Vec<u8> {
                 #bytes_body
             }
         }

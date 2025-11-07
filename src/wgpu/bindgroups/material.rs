@@ -16,11 +16,13 @@ impl GpuMaterialBindGroup {
         textures: &mut Textures,
         material: &Material,
     ) -> Self {
-        let empty_data = glam::Vec3::ONE.to_array();
+        let data = material.to_std140_bytes();
+
+        println!("Material uniform buffer size: {}", data.len());
 
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Material Buffer"),
-            contents: bytemuck::bytes_of(&empty_data),
+            contents: &data,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
