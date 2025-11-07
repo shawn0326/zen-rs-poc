@@ -1,6 +1,7 @@
 #[path = "common/mod.rs"]
 mod common;
 use common::App;
+use common::OrbitController;
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, WindowEvent};
@@ -18,6 +19,7 @@ use pollster::block_on;
 
 struct AppHandler {
     app: Option<App<'static>>,
+    orbit: Option<OrbitController>,
     #[cfg(target_arch = "wasm32")]
     proxy: Option<winit::event_loop::EventLoopProxy<App<'static>>>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -57,6 +59,17 @@ impl ApplicationHandler<App<'static>> for AppHandler {
 
             let app = block_on(App::new_benchmark(window, 50000));
             app.window.request_redraw();
+            // Initialize an OrbitController based on the starting camera
+            let orbit = {
+                let eye = app.camera.eye;
+                let target = app.camera.target;
+                let dir = eye - target;
+                let radius = dir.length().max(0.01);
+                let yaw = dir.x.atan2(dir.z).to_degrees();
+                let pitch = (dir.y / radius).asin().to_degrees();
+                OrbitController::new(target, radius, yaw, pitch)
+            };
+            self.orbit = Some(orbit);
             self.app = Some(app);
         }
     }
@@ -98,6 +111,23 @@ impl ApplicationHandler<App<'static>> for AppHandler {
 
                     app.render();
                     app.window.request_redraw();
+                }
+            }
+            WindowEvent::CursorMoved { .. }
+            | WindowEvent::MouseInput { .. }
+            | WindowEvent::MouseWheel { .. }
+            | WindowEvent::Focused(_) => {
+                if let (Some(app), Some(orbit)) = (&mut self.app, &mut self.orbit) {
+                    let size = app.window.inner_size();
+                    let viewport = glam::Vec2::new(size.width as f32, size.height as f32);
+                    let fovy = app.camera_projection.fovy_deg.to_radians();
+                    // Use a fixed small dt for smoothing; could be improved with Instant timing
+                    let dt = 1.0 / 60.0;
+                    let window_ref: &Window = &app.window;
+                    orbit.update(window_ref, &event, viewport, fovy, dt, |_, eye, target| {
+                        app.camera.eye = eye;
+                        app.camera.target = target;
+                    });
                 }
             }
             WindowEvent::KeyboardInput {
@@ -142,6 +172,7 @@ fn main() {
     {
         let mut app_handler = AppHandler {
             app: None,
+            orbit: None,
             fps_counter: common::FpsCounter::default(),
         };
 

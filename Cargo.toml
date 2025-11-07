@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 wgpu = "26"
-glam = { version = "0.29", features = ["bytemuck"] }
+glam = { version = "0.28", features = ["bytemuck", "mint"] }
 bytemuck = { version = "1.19", features = ["derive"] }
 zen_macro = { path = "crates/zen_macro" }
 
@@ -15,6 +15,7 @@ winit = "0.30.12"
 rand = "0.8"
 log = "0.4"
 getrandom = { version = "0.2", features = ["js"] }
+dolly = "0.6"
 
 [dev-dependencies.image]
 version = "0.24"
