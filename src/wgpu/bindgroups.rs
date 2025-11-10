@@ -3,9 +3,9 @@ mod material;
 mod primitive;
 use super::textures::Textures;
 use crate::graphics::{Material, MaterialId};
-pub(super) use global::GpuGlobalBindGroup;
+pub(super) use global::GlobalBindGroup;
 pub(super) use material::GpuMaterialBindGroup;
-pub(super) use primitive::GpuPrimitiveBindGroup;
+pub(super) use primitive::PrimitiveBindGroup;
 
 use std::collections::{HashMap, hash_map::Entry};
 

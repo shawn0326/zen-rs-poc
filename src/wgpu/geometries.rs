@@ -110,6 +110,21 @@ impl GpuGeometry {
             vertex_buffer_layouts,
         }
     }
+
+    pub fn vertex_buffer_layouts(&self) -> Vec<wgpu::VertexBufferLayout<'_>> {
+        self.vertex_buffer_layouts
+            .iter()
+            .map(|vbl| vbl.as_wgpu_layout())
+            .collect::<Vec<_>>()
+    }
+
+    pub fn set_buffers_to_render_pass(&self, render_pass: &mut wgpu::RenderPass) -> &Self {
+        render_pass.set_vertex_buffer(0, self.positions_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.tex_coords_buffer.slice(..));
+        render_pass.set_vertex_buffer(2, self.colors_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        self
+    }
 }
 
 pub(super) struct VertexBufferLayout {

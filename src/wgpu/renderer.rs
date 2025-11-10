@@ -1,5 +1,5 @@
 use super::{
-    bindgroups::{GpuGlobalBindGroup, GpuPrimitiveBindGroup, MaterialBindGroups},
+    bindgroups::{GlobalBindGroup, MaterialBindGroups, PrimitiveBindGroup},
     geometries::Geometries,
     pipelines::Pipelines,
     surfaces::Surfaces,
@@ -8,7 +8,6 @@ use super::{
 };
 use crate::{
     graphics::{Geometry, Material},
-    math::Mat4,
     render::{RenderItem, RenderTarget},
     scene::Camera,
 };
@@ -21,8 +20,8 @@ pub struct Renderer<'surf> {
     pipelines: Pipelines,
     targets: Targets,
     geometries: Geometries,
-    global_bind_group: GpuGlobalBindGroup,
-    primitive_bind_group: GpuPrimitiveBindGroup,
+    global_bind_group: GlobalBindGroup,
+    primitive_bind_group: PrimitiveBindGroup,
     material_bind_groups: MaterialBindGroups,
     textures: Textures,
 }
@@ -57,8 +56,8 @@ impl<'surf> Renderer<'surf> {
         let geometries = Geometries::new();
         let pipelines = Pipelines::new(surface.get_capabilities(&adapter).formats[0]);
         let targets = Targets::new();
-        let global_bind_group = GpuGlobalBindGroup::new(&device);
-        let primitive_bind_group = GpuPrimitiveBindGroup::new(&device);
+        let global_bind_group = GlobalBindGroup::new(&device);
+        let primitive_bind_group = PrimitiveBindGroup::new(&device, 10_000);
         let material_bind_groups = MaterialBindGroups::new();
         let textures = Textures::new(&device, &queue);
 
@@ -100,12 +99,13 @@ impl<'surf> Renderer<'surf> {
                 target,
             );
 
-            let mut matrices: Vec<Mat4> = Vec::with_capacity(render_list.len());
-            self.primitive_bind_group
-                .ensure_capacity(&self.device, render_list.len());
+            let global_bind_group = &self.global_bind_group;
+            let primitive_bind_group = self
+                .primitive_bind_group
+                .prepare(&self.device, render_list.len());
 
-            render_pass.set_bind_group(0, &self.global_bind_group.bind_group, &[]);
-            render_pass.set_bind_group(1, &self.primitive_bind_group.bind_group, &[]);
+            render_pass.set_bind_group(0, global_bind_group.gpu_bind_group(), &[]);
+            render_pass.set_bind_group(1, primitive_bind_group.gpu_bind_group(), &[]);
 
             let mut batch_start = 0u32;
             let mut indices = 0..0;
@@ -142,15 +142,10 @@ impl<'surf> Renderer<'surf> {
                     let pipeline = self.pipelines.set_pipeline(
                         &self.device,
                         &render_item.material,
-                        gpu_geometry
-                            .vertex_buffer_layouts
-                            .iter()
-                            .map(|vbl| vbl.as_wgpu_layout())
-                            .collect::<Vec<_>>()
-                            .as_slice(),
+                        &gpu_geometry.vertex_buffer_layouts(),
                         &[
-                            &self.global_bind_group.bind_group_layout,
-                            &self.primitive_bind_group.layout,
+                            global_bind_group.gpu_layout(),
+                            primitive_bind_group.gpu_layout(),
                             &gpu_material_bind_group.bind_group_layout,
                         ],
                     );
@@ -162,13 +157,7 @@ impl<'surf> Renderer<'surf> {
                     }
 
                     if geometry_changed {
-                        render_pass.set_vertex_buffer(0, gpu_geometry.positions_buffer.slice(..));
-                        render_pass.set_vertex_buffer(1, gpu_geometry.tex_coords_buffer.slice(..));
-                        render_pass.set_vertex_buffer(2, gpu_geometry.colors_buffer.slice(..));
-                        render_pass.set_index_buffer(
-                            gpu_geometry.index_buffer.slice(..),
-                            wgpu::IndexFormat::Uint32,
-                        );
+                        gpu_geometry.set_buffers_to_render_pass(&mut render_pass);
                     }
 
                     current_material_ptr = Some(material_ptr);
@@ -178,7 +167,7 @@ impl<'surf> Renderer<'surf> {
                     indices = 0..gpu_geometry.num_indices;
                 }
 
-                matrices.push(render_item.world_matrix);
+                primitive_bind_group.push_data(&render_item.world_matrix);
             }
 
             if !render_list.is_empty() {
@@ -186,9 +175,8 @@ impl<'surf> Renderer<'surf> {
                 render_pass.draw_indexed(indices, 0, batch_start..(render_list.len() as u32));
             }
 
-            self.global_bind_group.update_camera(&self.queue, camera);
-            self.primitive_bind_group
-                .upload_matrices(&self.queue, &matrices);
+            global_bind_group.upload(&self.queue, camera);
+            primitive_bind_group.flush(&self.queue);
         }
 
         self.queue.submit(Some(encoder.finish()));
