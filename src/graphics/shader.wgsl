@@ -20,19 +20,6 @@ var<uniform> camera: CameraUniform;
 @group(1) @binding(0)
 var<storage, read> model_matrices: array<mat4x4f>;
 
-@vertex
-fn vs_main(
-    model: VertexInput,
-    @builtin(instance_index) instance_idx: u32,
-) -> VertexOutput {
-    var out: VertexOutput;
-    out.tex_coord = model.tex_coord;
-    out.color = model.color;
-    let model_matrix = model_matrices[instance_idx];
-    out.clip_position = camera.view_proj * model_matrix * vec4f(model.position, 1.0);
-    return out;
-}
-
 struct MaterialUniforms {
     albedo_color: vec4<f32>,
     metallic: f32,
@@ -45,6 +32,19 @@ var<uniform> material: MaterialUniforms;
 var s_diffuse: sampler;
 @group(2) @binding(2)
 var t_diffuse: texture_2d<f32>;
+
+@vertex
+fn vs_main(
+    model: VertexInput,
+    @builtin(instance_index) instance_idx: u32,
+) -> VertexOutput {
+    var out: VertexOutput;
+    out.tex_coord = model.tex_coord;
+    out.color = model.color;
+    let model_matrix = model_matrices[instance_idx];
+    out.clip_position = camera.view_proj * model_matrix * vec4f(model.position, 1.0);
+    return out;
+}
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {

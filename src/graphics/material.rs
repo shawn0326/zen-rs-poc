@@ -51,4 +51,8 @@ impl Material {
     pub fn texture(&self) -> Option<&TextureRef> {
         self.albedo_texture.as_ref()
     }
+
+    pub fn shader_source(&self) -> &'static str {
+        include_str!("shader.wgsl")
+    }
 }
