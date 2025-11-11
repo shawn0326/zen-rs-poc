@@ -2,7 +2,8 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use std::rc::Rc;
 use std::{cell::RefCell, hint::black_box};
 use zen_rs_poc::{
-    graphics::{Geometry, Material, Primitive},
+    graphics::{Geometry, Primitive},
+    material::Material,
     scene::{Object3D, Scene},
 };
 
@@ -11,7 +12,8 @@ const PYRAMID_LEVELS: usize = 8;
 fn build_pyramid_scene() -> Scene {
     let scene = Scene::new();
     let geometry = Geometry::create_unit_cube();
-    let material = Material::new().to_ref();
+    let shader = zen_rs_poc::shader::builtins::pbr_shader();
+    let material = Material::from_shader(shader.clone()).into_rc_cell();
 
     fn build_level(
         parent: &Rc<Object3D>,

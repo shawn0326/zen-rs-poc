@@ -2840,7 +2840,6 @@ dependencies = [
  "web-sys",
  "wgpu",
  "winit",
- "zen_macro",
 ]
 
 [[package]]

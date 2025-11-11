@@ -3,10 +3,11 @@ use rand::Rng;
 use std::sync::Arc;
 use winit::window::Window;
 use zen_rs_poc::{
-    graphics::{Geometry, Material, Primitive, Texture, TextureSource},
+    graphics::{Geometry, Primitive, Texture, TextureSource},
     math::{Color4, Mat4, Vec3},
     render::{LoadOp, RenderCollector, RenderTarget},
     scene::{Camera, Object3D, Perspective, Scene},
+    symbol,
     wgpu::Renderer,
 };
 
@@ -88,12 +89,25 @@ impl<'window> App<'window> {
 
         let geometry = Geometry::create_unit_cube();
         let geometry2 = Geometry::create_unit_quad();
-        let material = Material::new().to_ref();
-        let material2 = Material::new().to_ref();
-        material
+
+        let pbr_shader = zen_rs_poc::shader::builtins::pbr_shader();
+
+        let pbr_material =
+            zen_rs_poc::material::Material::from_shader(pbr_shader.clone()).into_rc_cell();
+        pbr_material
             .borrow_mut()
-            .set_albedo_factor([1.0, 0.5, 0.5, 1.0]);
-        material2.borrow_mut().set_texture(texture);
+            .set_param_vec4f(symbol!("albedo_factor"), [1.0, 1.0, 1.0, 1.0])
+            .set_param_f(symbol!("roughness"), 0.5)
+            .set_param_f(symbol!("metallic"), 0.0)
+            .set_param_t(symbol!("albedo_texture"), texture.clone());
+
+        let pbr_material2 =
+            zen_rs_poc::material::Material::from_shader(pbr_shader.clone()).into_rc_cell();
+        pbr_material2
+            .borrow_mut()
+            .set_param_col4(symbol!("albedo_factor"), Color4::new(0.4, 0.4, 1.0, 1.0))
+            .set_param_f(symbol!("roughness"), 0.5)
+            .set_param_f(symbol!("metallic"), 0.0);
 
         let mut rng = rand::thread_rng();
 
@@ -103,10 +117,10 @@ impl<'window> App<'window> {
             } else {
                 geometry2.clone()
             };
-            let mat_ref = if i % 2 == 0 {
-                material.clone()
+            let mat_ref = if i % 3 == 0 {
+                pbr_material.clone()
             } else {
-                material2.clone()
+                pbr_material2.clone()
             };
             let primitive = Primitive::new(geom_ref, mat_ref);
 

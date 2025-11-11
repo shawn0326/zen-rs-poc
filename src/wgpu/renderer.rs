@@ -7,7 +7,8 @@ use super::{
     textures::Textures,
 };
 use crate::{
-    graphics::{Geometry, Material},
+    graphics::Geometry,
+    material::Material,
     render::{RenderItem, RenderTarget},
     scene::Camera,
 };

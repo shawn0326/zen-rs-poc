@@ -2,7 +2,7 @@ mod global;
 mod material;
 mod primitive;
 use super::textures::Textures;
-use crate::graphics::{Material, MaterialId};
+use crate::material::{Material, MaterialId};
 pub(super) use global::GlobalBindGroup;
 pub(super) use material::GpuMaterialBindGroup;
 pub(super) use primitive::PrimitiveBindGroup;

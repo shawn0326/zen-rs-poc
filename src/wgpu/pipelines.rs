@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::graphics::{Material, MaterialId};
+use crate::material::{Material, MaterialId};
 
 pub(super) struct Pipelines {
     format: wgpu::TextureFormat,
@@ -31,8 +31,10 @@ impl Pipelines {
             std::collections::hash_map::Entry::Vacant(v) => {
                 let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("Shader"),
-                    source: wgpu::ShaderSource::Wgsl(material.shader_source().into()),
+                    source: wgpu::ShaderSource::Wgsl(material.shader().source().into()),
                 });
+
+                let _ = material.shader().vertex_schema();
 
                 let pipeline_layout =
                     device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
