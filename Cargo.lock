@@ -2852,6 +2852,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "zen_material"
+version = "0.1.0"
+dependencies = [
+ "zen_material_derive",
+]
+
+[[package]]
+name = "zen_material_derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "zerocopy"
 version = "0.8.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
