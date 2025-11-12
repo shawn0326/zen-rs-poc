@@ -1,3 +1,5 @@
+mod material;
+mod schema;
 use super::TextureRef;
 use std::cell::RefCell;
 use std::rc::Rc;
