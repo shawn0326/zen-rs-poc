@@ -21,8 +21,10 @@ macro_rules! symbol {
 }
 
 pub mod graphics;
+pub mod material;
 pub mod math;
 pub mod render;
 pub mod scene;
+pub mod shader;
 pub mod wgpu;
 pub use zen_macro::*;
