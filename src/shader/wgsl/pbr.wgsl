@@ -21,7 +21,7 @@ var<uniform> camera: CameraUniform;
 var<storage, read> model_matrices: array<mat4x4f>;
 
 struct MaterialUniforms {
-    albedo_color: vec4<f32>,
+    albedo_factor: vec4<f32>,
     metallic: f32,
     roughness: f32,
 }
@@ -29,9 +29,9 @@ struct MaterialUniforms {
 @group(2) @binding(0)
 var<uniform> material: MaterialUniforms;
 @group(2) @binding(1)
-var s_diffuse: sampler;
+var albedo_texture: texture_2d<f32>;
 @group(2) @binding(2)
-var t_diffuse: texture_2d<f32>;
+var albedo_texture_sampler: sampler;
 
 @vertex
 fn vs_main(
@@ -48,6 +48,6 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    var color = textureSample(t_diffuse, s_diffuse, in.tex_coord) * material.albedo_color;
+    var color = textureSample(albedo_texture, albedo_texture_sampler, in.tex_coord) * material.albedo_factor;
     return vec4f(color.rgb * in.color.rgb, color.a);
 }

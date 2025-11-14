@@ -1,61 +1,120 @@
+mod builder;
+mod schema;
+mod types;
+
+pub use builder::*;
+pub(crate) use schema::*;
+pub use types::*;
+
 use crate::Symbol;
 use std::collections::HashMap;
+use std::fmt;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
-pub struct UniformBufferMemberDesc {
-    pub key: Symbol,
-    pub offset: usize,
+/// Metadata describing a single uniform field within one uniform-buffer binding.
+/// Fields:
+/// - index: index into `binding_schema` pointing to the UniformBuffer entry that owns this field.
+/// - offset: byte offset inside that buffer (already alignment‑adjusted).
+/// - size: logical byte size of the field (e.g. vec3 = 12 even though alignment is 16).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct UniformFieldMeta {
+    pub(crate) index: usize,
+    pub(crate) offset: usize,
+    pub(crate) size: usize,
 }
 
-pub enum BindingType {
-    UniformBuffer {
-        total_size: usize,
-        members: Box<[UniformBufferMemberDesc]>,
-    },
-    // StorageBuffer
-    Texture,
-}
-
-pub struct BindingEntry {
-    pub key: Symbol,
-    pub binding: u32,
-    pub ty: BindingType,
-}
-
-/// 仅包含着色器所需的顶点输入信息，但不包含具体的顶点缓冲布局，以保持和
-/// Geometry的解耦。比如：Geometry可以是Interleaved的，而Shader只关心
-/// 每个属性的位置。
-pub struct VertexEntry {
-    pub key: Symbol,
-    pub location: u32,
+/// Metadata for a texture binding.
+/// Fields:
+/// - index: index into `binding_schema` pointing to the texture BindingEntry.
+/// Future additions may include sample type, view dimension, array/slice info, etc.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct TextureMeta {
+    pub(crate) index: usize,
 }
 
 pub type ShaderRc = Rc<Shader>;
 
-/// `Shader`持有着着色器程序源码以及相关的绑定与顶点输入描述信息。
-/// 它作为材质的`元信息`，用于指导材质的初始化（开辟内存）
-/// 以及GPU绑定资源和顶点输入布局的创建。
+/// Holds WGSL source and the immutable shader interface schema:
+/// - binding schema: uniform buffers and textures (for bind group layout generation and material writes)
+/// - vertex schema: vertex attributes required by the shader (for pipeline vertex state)
+///
+/// The schema is metadata used to:
+/// - allocate and address material uniform storage (offset/size),
+/// - build fast lookup tables (symbol → locations),
+/// - help the backend create wgpu layouts and pipelines.
+/// This type does not compile or own any GPU objects by itself.
 pub struct Shader {
-    pub source: Box<str>,
-    pub binding_schema: Box<[BindingEntry]>,
-    pub vertex_schema: Box<[VertexEntry]>,
-    uniform_lut: OnceLock<HashMap<Symbol, (usize, usize)>>,
-    texture_lut: OnceLock<HashMap<Symbol, usize>>,
+    source: Box<str>,
+    binding_schema: Box<[BindingEntry]>,
+    vertex_schema: Box<[VertexEntry]>,
+    uniform_lut: OnceLock<HashMap<Symbol, UniformFieldMeta>>,
+    texture_lut: OnceLock<HashMap<Symbol, TextureMeta>>,
 }
 
 impl Shader {
+    /// Constructs a Shader from source and precomputed schemas.
+    /// No GPU compilation happens here; backends consume the metadata later.
+    #[inline]
+    pub(crate) fn new(
+        source: Box<str>,
+        binding_schema: Box<[BindingEntry]>,
+        vertex_schema: Box<[VertexEntry]>,
+    ) -> Self {
+        Shader {
+            source,
+            binding_schema,
+            vertex_schema,
+            uniform_lut: OnceLock::new(),
+            texture_lut: OnceLock::new(),
+        }
+    }
+
+    /// Returns the shader source as `&str` (typically WGSL).
+    #[inline]
+    pub(crate) fn source(&self) -> &str {
+        &self.source
+    }
+
+    /// Read-only access to the binding schema (uniform buffers/textures).
+    #[inline]
+    pub(crate) fn binding_schema(&self) -> &[BindingEntry] {
+        &self.binding_schema
+    }
+
+    /// Read-only access to the vertex attribute schema.
+    #[inline]
+    pub(crate) fn vertex_schema(&self) -> &[VertexEntry] {
+        &self.vertex_schema
+    }
+
+    /// Wraps this Shader in `Rc` for shared ownership across materials.
+    #[inline]
     pub fn into_rc(self) -> ShaderRc {
         Rc::new(self)
     }
 
-    fn uniform_map(&self) -> &HashMap<Symbol, (usize, usize)> {
+    /// Builds (once) and caches the map: uniform symbol → field metadata.
+    /// Subsequent calls are O(1) lookups into the cached map.
+    fn uniform_map(&self) -> &HashMap<Symbol, UniformFieldMeta> {
         self.uniform_lut.get_or_init(|| {
             let mut map = HashMap::new();
             for (i, entry) in self.binding_schema.iter().enumerate() {
                 if let BindingType::UniformBuffer { members, .. } = &entry.ty {
                     for m in members {
-                        map.insert(m.key, (i, m.offset));
+                        if map
+                            .insert(
+                                m.key,
+                                UniformFieldMeta {
+                                    index: i,
+                                    offset: m.offset,
+                                    size: m.size,
+                                },
+                            )
+                            .is_some()
+                        {
+                            panic!("duplicate uniform key: {:?}", m.key);
+                        }
                     }
                 }
             }
@@ -63,203 +122,84 @@ impl Shader {
         })
     }
 
-    fn texture_map(&self) -> &HashMap<Symbol, usize> {
+    /// Builds (once) and caches the map: texture symbol → binding metadata.
+    fn texture_map(&self) -> &HashMap<Symbol, TextureMeta> {
         self.texture_lut.get_or_init(|| {
             let mut map = HashMap::new();
             for (i, entry) in self.binding_schema.iter().enumerate() {
                 if let BindingType::Texture = entry.ty {
-                    map.insert(entry.key, i);
+                    if map.insert(entry.key, TextureMeta { index: i }).is_some() {
+                        panic!("duplicate texture key: {:?}", entry.key);
+                    }
                 }
             }
             map
         })
     }
 
-    /// 查找指定uniform变量的位置，返回(index, offset)
-    pub fn find_uniform_location(&self, key: &Symbol) -> Option<(usize, usize)> {
+    /// Fast lookup of uniform field metadata by symbol.
+    #[inline]
+    pub(crate) fn uniform_field_meta(&self, key: &Symbol) -> Option<UniformFieldMeta> {
         self.uniform_map().get(key).copied()
     }
 
-    /// 查找指定纹理的位置，返回index
-    pub fn find_texture_location(&self, key: &Symbol) -> Option<usize> {
+    /// Fast lookup of texture binding metadata by symbol.
+    #[inline]
+    pub(crate) fn texture_meta(&self, key: &Symbol) -> Option<TextureMeta> {
         self.texture_map().get(key).copied()
     }
 }
 
-////// Builders //////
+impl fmt::Debug for Shader {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let preview_len = self.source.len().min(64);
+        let preview = &self.source[..preview_len];
 
-/// std140 对齐规则
-#[inline]
-fn align_up(v: usize, a: usize) -> usize {
-    debug_assert!(a.is_power_of_two());
-    (v + (a - 1)) & !(a - 1)
-}
+        let alternate = f.alternate();
 
-#[derive(Clone, Copy)]
-pub enum UniformType {
-    Float,
-    Vec4,
-}
+        let mut ds = f.debug_struct("Shader");
+        ds.field("source_len", &self.source.len())
+            .field("source_preview", &preview)
+            .field("bindings_len", &self.binding_schema.len())
+            .field("vertex_attrs_len", &self.vertex_schema.len())
+            .field("uniform_cache_init", &self.uniform_lut.get().is_some())
+            .field("texture_cache_init", &self.texture_lut.get().is_some());
 
-impl UniformType {
-    #[inline]
-    fn align(self) -> usize {
-        match self {
-            UniformType::Float => 4,
-            UniformType::Vec4 => 16,
+        if alternate {
+            ds.field("binding_schema", &self.binding_schema)
+                .field("vertex_schema", &self.vertex_schema);
         }
-    }
-    #[inline]
-    fn size(self) -> usize {
-        match self {
-            UniformType::Float => 4,
-            UniformType::Vec4 => 16,
-        }
+
+        ds.finish()
     }
 }
 
-pub struct BufferBuilder {
-    parent: ShaderBuilder,
-    key: Symbol,
-    binding: u32,
-    members: Vec<UniformBufferMemberDesc>,
-    cursor: usize,
-}
-
-impl BufferBuilder {
-    #[inline]
-    pub fn uniform(mut self, key: Symbol, ty: UniformType) -> Self {
-        let off = align_up(self.cursor, ty.align());
-        self.members
-            .push(UniformBufferMemberDesc { key, offset: off });
-        self.cursor = off + ty.size();
-        self
-    }
-
-    // 便捷方法
-    #[inline]
-    pub fn float(self, key: Symbol) -> Self {
-        self.uniform(key, UniformType::Float)
-    }
-    #[inline]
-    pub fn vec4(self, key: Symbol) -> Self {
-        self.uniform(key, UniformType::Vec4)
-    }
-
-    // 结束该 buffer，回到主 Builder
-    pub fn finish(mut self) -> ShaderBuilder {
-        let total_size = align_up(self.cursor, 16);
-        self.parent.binding_schema.push(BindingEntry {
-            key: self.key,
-            binding: self.binding,
-            ty: BindingType::UniformBuffer {
-                total_size,
-                members: self.members.into_boxed_slice(),
-            },
-        });
-        self.parent
-    }
-}
-
-pub struct ShaderBuilder {
-    source: String,
-    binding_schema: Vec<BindingEntry>,
-    vertex_schema: Vec<VertexEntry>,
-}
-
-impl ShaderBuilder {
-    pub fn new() -> Self {
-        Self {
-            source: String::new(),
-            binding_schema: Vec::new(),
-            vertex_schema: Vec::new(),
-        }
-    }
-
-    // 设置源码
-    pub fn source(mut self, src: impl Into<String>) -> Self {
-        self.source = src.into();
-        self
-    }
-
-    // 开始一个 UniformBuffer 的定义（返回子 Builder 以链式添加成员）
-    pub fn buffer(self, key: Symbol, binding: u32) -> BufferBuilder {
-        BufferBuilder {
-            parent: self,
-            key,
-            binding,
-            members: Vec::new(),
-            cursor: 0,
-        }
-    }
-
-    // 添加一个纹理绑定条目
-    pub fn texture(mut self, key: Symbol, binding: u32) -> Self {
-        self.binding_schema.push(BindingEntry {
-            key,
-            binding,
-            ty: BindingType::Texture,
-        });
-        self
-    }
-
-    // 可选：添加一个顶点属性声明
-    pub fn vertex_attr(mut self, key: Symbol, location: u32) -> Self {
-        self.vertex_schema.push(VertexEntry { key, location });
-        self
-    }
-
-    // 生成最终 Shader
-    pub fn build(self) -> Shader {
+impl Clone for Shader {
+    fn clone(&self) -> Self {
         Shader {
-            source: self.source.into_boxed_str(),
-            binding_schema: self.binding_schema.into_boxed_slice(),
-            vertex_schema: self.vertex_schema.into_boxed_slice(),
+            source: self.source.clone(),
+            binding_schema: self.binding_schema.clone(),
+            vertex_schema: self.vertex_schema.clone(),
+            // Do not copy caches, reinitialize
             uniform_lut: OnceLock::new(),
             texture_lut: OnceLock::new(),
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl PartialEq for Shader {
+    fn eq(&self, other: &Self) -> bool {
+        self.source == other.source
+            && self.binding_schema == other.binding_schema
+            && self.vertex_schema == other.vertex_schema
+    }
+}
+impl Eq for Shader {}
 
-    #[test]
-    fn test_shader_builder() {
-        let shader = ShaderBuilder::new()
-            // set source
-            .source("shader code here")
-            // uniform buffer
-            .buffer(symbol!("uniforms"), 0)
-            .vec4(symbol!("albedo_factor"))
-            .float(symbol!("roughness"))
-            .finish()
-            // texture
-            .texture(symbol!("albedo_texture"), 1)
-            // vertex attribute
-            .vertex_attr(symbol!("position"), 0)
-            // build
-            .build();
-
-        assert_eq!(shader.source.as_ref(), "shader code here");
-        assert_eq!(shader.binding_schema.len(), 2);
-        assert_eq!(shader.vertex_schema.len(), 1);
-
-        let loc = shader.find_uniform_location(&symbol!("albedo_factor"));
-        assert!(loc.is_some());
-        let (index, offset) = loc.unwrap();
-        assert_eq!(index, 0);
-        assert_eq!(offset, 0);
-
-        let loc = shader.find_uniform_location(&symbol!("roughness"));
-        assert!(loc.is_some());
-        let (index, offset) = loc.unwrap();
-        assert_eq!(index, 0);
-        assert_eq!(offset, 16);
-
-        let tex_loc = shader.find_texture_location(&symbol!("albedo_texture"));
-        assert!(tex_loc.is_some());
-        assert_eq!(tex_loc.unwrap(), 1);
+impl std::hash::Hash for Shader {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.source.hash(state);
+        self.binding_schema.hash(state);
+        self.vertex_schema.hash(state);
     }
 }

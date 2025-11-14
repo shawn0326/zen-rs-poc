@@ -7,7 +7,6 @@ edition = "2024"
 wgpu = "26"
 glam = { version = "0.28", features = ["bytemuck", "mint"] }
 bytemuck = { version = "1.19", features = ["derive"] }
-zen_macro = { path = "crates/zen_macro" }
 
 [dev-dependencies]
 pollster = "0.4.0"

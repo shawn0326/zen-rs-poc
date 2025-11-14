@@ -2840,26 +2840,10 @@ dependencies = [
  "web-sys",
  "wgpu",
  "winit",
- "zen_macro",
 ]
 
 [[package]]
 name = "zen_macro"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
-name = "zen_material"
-version = "0.1.0"
-dependencies = [
- "zen_material_derive",
-]
-
-[[package]]
-name = "zen_material_derive"
 version = "0.1.0"
 dependencies = [
  "quote",

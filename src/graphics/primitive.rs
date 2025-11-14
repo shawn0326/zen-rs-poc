@@ -1,13 +1,14 @@
-use super::{GeometryRef, MaterialRef};
+use super::GeometryRef;
+use crate::material::MaterialRcCell;
 
 #[derive(Clone)]
 pub struct Primitive {
     geometry: GeometryRef,
-    material: MaterialRef,
+    material: MaterialRcCell,
 }
 
 impl Primitive {
-    pub fn new(geometry: GeometryRef, material: MaterialRef) -> Self {
+    pub fn new(geometry: GeometryRef, material: MaterialRcCell) -> Self {
         Self { geometry, material }
     }
 
@@ -19,11 +20,11 @@ impl Primitive {
         &self.geometry
     }
 
-    pub fn set_material(&mut self, material: MaterialRef) {
+    pub fn set_material(&mut self, material: MaterialRcCell) {
         self.material = material;
     }
 
-    pub fn material(&self) -> &MaterialRef {
+    pub fn material(&self) -> &MaterialRcCell {
         &self.material
     }
 }
