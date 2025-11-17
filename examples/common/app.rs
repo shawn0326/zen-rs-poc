@@ -90,20 +90,19 @@ impl<'window> App<'window> {
         let geometry = Geometry::create_unit_cube();
         let geometry2 = Geometry::create_unit_quad();
 
+        let unlit_shader = zen_rs_poc::shader::builtins::unlit_shader();
         let pbr_shader = zen_rs_poc::shader::builtins::pbr_shader();
 
-        let pbr_material =
-            zen_rs_poc::material::Material::from_shader(pbr_shader.clone()).into_rc_cell();
-        pbr_material
+        let material =
+            zen_rs_poc::material::Material::from_shader(unlit_shader.clone()).into_rc_cell();
+        material
             .borrow_mut()
             .set_param_vec4f(symbol!("albedo_factor"), [1.0, 1.0, 1.0, 1.0])
-            .set_param_f(symbol!("roughness"), 0.5)
-            .set_param_f(symbol!("metallic"), 0.0)
             .set_param_t(symbol!("albedo_texture"), texture.clone());
 
-        let pbr_material2 =
+        let material2 =
             zen_rs_poc::material::Material::from_shader(pbr_shader.clone()).into_rc_cell();
-        pbr_material2
+        material2
             .borrow_mut()
             .set_param_col4(symbol!("albedo_factor"), Color4::new(0.4, 0.4, 1.0, 1.0))
             .set_param_f(symbol!("roughness"), 0.5)
@@ -118,9 +117,9 @@ impl<'window> App<'window> {
                 geometry2.clone()
             };
             let mat_ref = if i % 3 == 0 {
-                pbr_material.clone()
+                material.clone()
             } else {
-                pbr_material2.clone()
+                material2.clone()
             };
             let primitive = Primitive::new(geom_ref, mat_ref);
 

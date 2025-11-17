@@ -55,6 +55,10 @@ impl Textures {
             _ => &self.default_gpu_texture,
         }
     }
+
+    pub fn get_gpu_texture_by_id(&self, texture_id: &TextureId) -> Option<&GpuTexture> {
+        self.map.get(texture_id)
+    }
 }
 
 pub(super) struct GpuTexture {
