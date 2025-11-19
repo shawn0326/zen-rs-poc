@@ -43,3 +43,4 @@ pub mod render;
 pub mod scene;
 pub mod shader;
 pub mod wgpu;
+pub mod world;
