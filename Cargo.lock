@@ -2835,6 +2835,7 @@ dependencies = [
  "log",
  "pollster",
  "rand",
+ "slotmap",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

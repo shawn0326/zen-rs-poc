@@ -3,13 +3,52 @@ use rand::Rng;
 use std::sync::Arc;
 use winit::window::Window;
 use zen_rs_poc::{
+    camera::{Camera, PerspectiveProjection},
     graphics::{Geometry, Primitive, Texture, TextureSource},
     math::{Color4, Mat4, Vec3},
     render::{LoadOp, RenderCollector, RenderTarget},
-    scene::{Camera, Object3D, Perspective, Scene},
+    scene::{Object3D, Scene},
     symbol,
     wgpu::Renderer,
 };
+
+pub struct MainCamera {
+    eye: Vec3,
+    target: Vec3,
+    proj: PerspectiveProjection,
+    inner: Camera,
+}
+
+impl MainCamera {
+    pub fn new(eye: Vec3, target: Vec3, up: Vec3, proj: PerspectiveProjection) -> Self {
+        let mut camera = Camera::default();
+        camera.set_view(Mat4::look_at_rh(eye, target, up));
+        camera.set_projection(proj.to_mat4());
+        Self {
+            eye,
+            target,
+            proj,
+            inner: camera,
+        }
+    }
+
+    pub fn update_view(&mut self, view: Mat4, eye: Vec3, target: Vec3) -> &mut Self {
+        self.eye = eye;
+        self.target = target;
+        self.inner.set_view(view);
+        self
+    }
+
+    pub fn update_aspect(&mut self, aspect: f32) -> &mut Self {
+        self.proj.aspect = aspect;
+        self.inner.set_projection(self.proj.to_mat4());
+        self
+    }
+
+    pub fn fovy(&self) -> f32 {
+        self.proj.fovy_deg.to_radians()
+    }
+}
 
 pub struct App<'window> {
     pub window: Arc<Window>,
@@ -17,8 +56,7 @@ pub struct App<'window> {
     screen_render_target: RenderTarget,
     render_collector: RenderCollector,
     pub scene: Scene,
-    pub camera: Camera,
-    pub camera_projection: Perspective,
+    pub camera: MainCamera,
 }
 
 impl<'window> App<'window> {
@@ -49,17 +87,12 @@ impl<'window> App<'window> {
 
         let scene = Scene::new();
 
-        let mut camera = Camera {
-            eye: (0.0, 0.0, 10.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: Vec3::Y,
-            proj: Mat4::IDENTITY,
-        };
-
-        let camera_projection =
-            Perspective::new(45.0, size.width as f32 / size.height as f32, 0.1, 100.0);
-
-        camera.set_projection(&camera_projection);
+        let camera = MainCamera::new(
+            (0.0, 0.0, 10.0).into(),
+            (0.0, 0.0, 0.0).into(),
+            Vec3::Y,
+            PerspectiveProjection::new(45.0, size.width as f32 / size.height as f32, 0.1, 100.0),
+        );
 
         Self {
             window,
@@ -68,7 +101,6 @@ impl<'window> App<'window> {
             render_collector,
             scene,
             camera,
-            camera_projection,
         }
     }
 
@@ -139,8 +171,8 @@ impl<'window> App<'window> {
     }
 
     pub fn set_window_resized(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        self.camera_projection.aspect = new_size.width as f32 / new_size.height as f32;
-        self.camera.set_projection(&self.camera_projection);
+        self.camera
+            .update_aspect(new_size.width as f32 / new_size.height as f32);
         self.screen_render_target
             .resize(new_size.width, new_size.height);
     }
@@ -149,6 +181,6 @@ impl<'window> App<'window> {
         self.scene.update_world_matrix();
         let render_list = self.render_collector.collect(&self.scene);
         self.renderer
-            .render(&render_list, &self.camera, &self.screen_render_target);
+            .render(&render_list, &self.camera.inner, &self.screen_render_target);
     }
 }

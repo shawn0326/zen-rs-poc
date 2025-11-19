@@ -41,3 +41,7 @@ impl Color4 {
         Self { r, g, b, a }
     }
 }
+
+pub trait ToMat4 {
+    fn to_mat4(&self) -> Mat4;
+}

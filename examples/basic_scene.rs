@@ -4,9 +4,8 @@ use common::App;
 use common::OrbitController;
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
-use winit::event::{ElementState, WindowEvent};
+use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 #[cfg(target_arch = "wasm32")]
@@ -61,8 +60,8 @@ impl ApplicationHandler<App<'static>> for AppHandler {
             app.window.request_redraw();
             // Initialize an OrbitController based on the starting camera
             let orbit = {
-                let eye = app.camera.eye;
-                let target = app.camera.target;
+                let eye = glam::Vec3::new(0.0, 0.0, 10.0);
+                let target = glam::Vec3::ZERO;
                 let dir = eye - target;
                 let radius = dir.length().max(0.01);
                 let yaw = dir.x.atan2(dir.z).to_degrees();
@@ -120,46 +119,20 @@ impl ApplicationHandler<App<'static>> for AppHandler {
                 if let (Some(app), Some(orbit)) = (&mut self.app, &mut self.orbit) {
                     let size = app.window.inner_size();
                     let viewport = glam::Vec2::new(size.width as f32, size.height as f32);
-                    let fovy = app.camera_projection.fovy_deg.to_radians();
+                    let fovy = app.camera.fovy();
                     // Use a fixed small dt for smoothing; could be improved with Instant timing
                     let dt = 1.0 / 60.0;
                     let window_ref: &Window = &app.window;
-                    orbit.update(window_ref, &event, viewport, fovy, dt, |_, eye, target| {
-                        app.camera.eye = eye;
-                        app.camera.target = target;
-                    });
-                }
-            }
-            WindowEvent::KeyboardInput {
-                device_id: _,
-                event,
-                is_synthetic: _,
-            } => {
-                if let Some(app) = &mut self.app {
-                    let is_pressed = event.state == ElementState::Pressed;
-
-                    if !is_pressed {
-                        return;
-                    }
-
-                    match event.physical_key {
-                        PhysicalKey::Code(KeyCode::KeyW) | PhysicalKey::Code(KeyCode::ArrowUp) => {
-                            app.camera.eye.z -= 0.1;
-                        }
-                        PhysicalKey::Code(KeyCode::KeyA)
-                        | PhysicalKey::Code(KeyCode::ArrowLeft) => {
-                            app.camera.eye.x -= 0.1;
-                        }
-                        PhysicalKey::Code(KeyCode::KeyS)
-                        | PhysicalKey::Code(KeyCode::ArrowDown) => {
-                            app.camera.eye.z += 0.1;
-                        }
-                        PhysicalKey::Code(KeyCode::KeyD)
-                        | PhysicalKey::Code(KeyCode::ArrowRight) => {
-                            app.camera.eye.x += 0.1;
-                        }
-                        _ => (),
-                    }
+                    orbit.update(
+                        window_ref,
+                        &event,
+                        viewport,
+                        fovy,
+                        dt,
+                        |view, eye, target| {
+                            app.camera.update_view(view, eye, target);
+                        },
+                    );
                 }
             }
             _ => (),

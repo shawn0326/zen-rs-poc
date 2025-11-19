@@ -35,6 +35,7 @@ macro_rules! symbol {
     ($s:expr) => {{ $crate::Symbol($crate::fnv1a64($s.as_bytes())) }};
 }
 
+pub mod camera;
 pub mod graphics;
 pub mod material;
 pub mod math;

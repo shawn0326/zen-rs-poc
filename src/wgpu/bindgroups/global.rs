@@ -1,4 +1,4 @@
-use crate::scene::Camera;
+use crate::camera::Camera;
 
 pub(in super::super) struct GlobalBindGroup {
     gpu_buffer: wgpu::Buffer,
@@ -54,7 +54,7 @@ impl GlobalBindGroup {
     }
 
     pub fn upload(&self, queue: &wgpu::Queue, camera: &Camera) -> &Self {
-        let data = camera.build_view_projection_matrix().to_cols_array_2d();
+        let data = camera.view_projection().to_cols_array_2d();
         queue.write_buffer(&self.gpu_buffer, 0, bytemuck::bytes_of(&data));
         self
     }

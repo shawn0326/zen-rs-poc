@@ -7,6 +7,7 @@ edition = "2024"
 wgpu = "26"
 glam = { version = "0.28", features = ["bytemuck", "mint"] }
 bytemuck = { version = "1.19", features = ["derive"] }
+slotmap = "1"
 
 [dev-dependencies]
 pollster = "0.4.0"

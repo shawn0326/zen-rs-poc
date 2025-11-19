@@ -7,10 +7,10 @@ use super::{
     textures::Textures,
 };
 use crate::{
+    camera::Camera,
     graphics::Geometry,
     material::Material,
     render::{RenderItem, RenderTarget},
-    scene::Camera,
 };
 
 pub struct Renderer<'surf> {
