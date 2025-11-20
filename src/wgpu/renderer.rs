@@ -7,10 +7,8 @@ use super::{
     textures::Textures,
 };
 use crate::{
-    camera::Camera,
-    graphics::Geometry,
-    material::Material,
-    render::{RenderItem, RenderTarget},
+    camera::Camera, graphics::Geometry, material::Material, render::RenderItem,
+    target::RenderTarget,
 };
 
 pub struct Renderer<'surf> {
@@ -79,10 +77,16 @@ impl<'surf> Renderer<'surf> {
         }
     }
 
-    pub fn render(&mut self, render_list: &[RenderItem], camera: &Camera, target: &RenderTarget) {
+    pub fn render(
+        &mut self,
+        render_list: &[RenderItem],
+        camera: &Camera,
+        target: &RenderTarget,
+        resources: &crate::Resources,
+    ) {
         let surface_textures =
             self.surfaces
-                .get_surface_textures(&self.adapter, &self.device, target);
+                .get_surface_textures(&self.adapter, &self.device, target, resources);
 
         let mut encoder = self
             .device
@@ -98,6 +102,7 @@ impl<'surf> Renderer<'surf> {
                 &mut encoder,
                 &mut self.textures,
                 target,
+                resources,
             );
 
             let global_bind_group = &self.global_bind_group;
@@ -138,6 +143,7 @@ impl<'surf> Renderer<'surf> {
                             &self.queue,
                             &*material,
                             &mut self.textures,
+                            resources,
                         );
 
                     let pipeline = self.pipelines.set_pipeline(

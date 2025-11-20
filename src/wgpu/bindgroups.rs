@@ -26,6 +26,7 @@ impl MaterialBindGroups {
         queue: &wgpu::Queue,
         material: &Material,
         textures: &mut Textures,
+        resources: &crate::Resources,
     ) -> &GpuMaterialBindGroup {
         let material_id = material.id();
 
@@ -33,7 +34,7 @@ impl MaterialBindGroups {
             Entry::Occupied(o) => o.into_mut(),
             Entry::Vacant(v) => {
                 let gpu_material_bind_group =
-                    GpuMaterialBindGroup::new(device, queue, textures, &*material);
+                    GpuMaterialBindGroup::new(device, queue, textures, &*material, resources);
 
                 v.insert(gpu_material_bind_group)
             }

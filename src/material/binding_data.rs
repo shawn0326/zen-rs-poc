@@ -4,7 +4,7 @@
 //! `Shader`'s binding schema. It is not exposed publicly; callers access it
 //! indirectly through `Material`.
 
-use crate::graphics::TextureRef;
+use crate::TextureHandle;
 
 /// Per-binding data stored by a `Material`.
 ///
@@ -19,7 +19,7 @@ pub(crate) enum MaterialBindingData {
 
     /// Texture binding stored as an optional handle.
     /// `None` indicates the texture is currently unbound.
-    Texture(Option<TextureRef>),
+    Texture(Option<TextureHandle>),
 }
 
 impl MaterialBindingData {
@@ -52,19 +52,7 @@ impl MaterialBindingData {
     /// Panics
     /// - If this binding is not `Texture`.
     #[inline(always)]
-    pub(crate) fn expect_texture(&self) -> &Option<TextureRef> {
-        match self {
-            MaterialBindingData::Texture(t) => t,
-            _ => panic!("expected Texture at index"),
-        }
-    }
-
-    /// Returns a mutable reference to the optional texture handle.
-    ///
-    /// Panics
-    /// - If this binding is not `Texture`.
-    #[inline(always)]
-    pub(crate) fn expect_texture_mut(&mut self) -> &mut Option<TextureRef> {
+    pub(crate) fn expect_texture(&self) -> &Option<TextureHandle> {
         match self {
             MaterialBindingData::Texture(t) => t,
             _ => panic!("expected Texture at index"),

@@ -12,10 +12,10 @@ mod binding_data;
 
 pub(crate) use binding_data::*;
 
-use super::graphics::TextureRef;
-use super::shader::*;
 use crate::Symbol;
+use crate::TextureHandle;
 use crate::math::*;
+use crate::shader::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -201,21 +201,24 @@ impl Material {
     }
 
     /// Assigns a texture to the specified texture binding key.
-    ///
-    /// Ownership: consumes `texture` (clone at callsite if you want to keep it).
-    /// Returns `&mut Self` for chaining.
     #[inline]
-    pub fn set_param_t(&mut self, key: Symbol, texture: TextureRef) -> &mut Self {
+    pub fn set_param_t(&mut self, key: Symbol, texture: TextureHandle) -> &mut Self {
         let meta = self.shader.texture_meta(key).expect("unknown texture key");
-        *self.bindings[meta.index].expect_texture_mut() = Some(texture);
+        if !matches!(
+            self.shader.binding_schema()[meta.index].ty,
+            BindingType::Texture
+        ) {
+            panic!("binding key is not a texture");
+        }
+        self.bindings[meta.index] = MaterialBindingData::Texture(Some(texture));
         self
     }
 
     /// Returns the texture handle stored at the binding (if any).
     #[inline]
-    pub fn get_param_t(&self, key: Symbol) -> Option<&TextureRef> {
+    pub fn get_param_t(&self, key: Symbol) -> &Option<TextureHandle> {
         let meta = self.shader.texture_meta(key).expect("unknown texture key");
-        self.bindings[meta.index].expect_texture().as_ref()
+        self.bindings[meta.index].expect_texture()
     }
 }
 

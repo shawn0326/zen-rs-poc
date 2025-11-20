@@ -1,9 +1,10 @@
-use crate::graphics::{Texture, TextureFormat, TextureId, TextureSource};
-use std::collections::HashMap;
+use crate::TextureHandle;
+use crate::texture::{Texture, TextureFormat, TextureSource};
+use slotmap::SecondaryMap;
 
 pub(super) struct Textures {
     default_gpu_texture: GpuTexture,
-    map: HashMap<TextureId, GpuTexture>,
+    pool: SecondaryMap<TextureHandle, GpuTexture>,
 }
 
 impl Textures {
@@ -14,7 +15,7 @@ impl Textures {
 
         Self {
             default_gpu_texture,
-            map: HashMap::new(),
+            pool: SecondaryMap::new(),
         }
     }
 
@@ -27,37 +28,46 @@ impl Textures {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture: &Texture,
+        texture_handle: TextureHandle,
     ) -> &GpuTexture {
-        let texture_id = texture.id();
-
         match texture.source() {
             TextureSource::D2 {
                 data,
                 width,
                 height,
-            } => self.map.entry(texture_id).or_insert_with(|| {
-                let gpu_texture = GpuTexture::new(device, (*width, *height), texture.format());
-                gpu_texture.upload(queue, data, *width, *height);
-                gpu_texture
-            }),
+            } => {
+                let create_gpu_texture = || {
+                    let gpu_texture = GpuTexture::new(device, (*width, *height), texture.format());
+                    gpu_texture.upload(queue, data, *width, *height);
+                    gpu_texture
+                };
+
+                match self.pool.entry(texture_handle) {
+                    Some(entry) => entry.or_insert_with(create_gpu_texture),
+                    None => panic!("Texture source is Render, but has been removed from pool."),
+                }
+            }
             TextureSource::Render { width, height } => {
-                if let Some(existing) = self.map.get(&texture_id) {
+                if let Some(existing) = self.pool.get(texture_handle) {
                     let desc_size = existing.descriptor.size;
                     if desc_size.width != *width || desc_size.height != *height {
-                        self.map.remove(&texture_id);
+                        self.pool.remove(texture_handle);
                     }
                 }
 
-                self.map
-                    .entry(texture_id)
-                    .or_insert_with(|| GpuTexture::new(device, (*width, *height), texture.format()))
+                match self.pool.entry(texture_handle) {
+                    Some(entry) => entry.or_insert_with(|| {
+                        GpuTexture::new(device, (*width, *height), texture.format())
+                    }),
+                    None => panic!("Texture source is Render, but has been removed from pool."),
+                }
             }
             _ => &self.default_gpu_texture,
         }
     }
 
-    pub fn get_gpu_texture_by_id(&self, texture_id: &TextureId) -> Option<&GpuTexture> {
-        self.map.get(texture_id)
+    pub fn get_gpu_texture_by_id(&self, texture_handle: TextureHandle) -> Option<&GpuTexture> {
+        self.pool.get(texture_handle)
     }
 }
 

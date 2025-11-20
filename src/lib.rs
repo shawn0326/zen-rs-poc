@@ -42,5 +42,9 @@ pub mod math;
 pub mod render;
 pub mod scene;
 pub mod shader;
+pub mod target;
+pub mod texture;
 pub mod wgpu;
-pub mod world;
+
+mod resource;
+pub use resource::*;

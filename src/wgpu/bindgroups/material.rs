@@ -15,6 +15,7 @@ impl GpuMaterialBindGroup {
         queue: &wgpu::Queue,
         textures: &mut Textures,
         material: &Material,
+        resources: &crate::Resources,
     ) -> Self {
         let shader = material.shader();
 
@@ -36,8 +37,13 @@ impl GpuMaterialBindGroup {
                         ));
                     }
                     BindingType::Texture => {
-                        if let Some(texture) = material.bindings()[index].expect_texture() {
-                            textures.get_gpu_texture(device, queue, &*texture.borrow());
+                        if let Some(texture_handle) = material.bindings()[index].expect_texture() {
+                            textures.get_gpu_texture(
+                                device,
+                                queue,
+                                resources.get_texture(*texture_handle).unwrap(),
+                                *texture_handle,
+                            );
                         }
                     }
                 }
@@ -87,10 +93,8 @@ impl GpuMaterialBindGroup {
                     });
 
                     let gpu_texture;
-                    if let Some(texture) = material.bindings()[index].expect_texture() {
-                        gpu_texture = textures
-                            .get_gpu_texture_by_id(&texture.borrow().id())
-                            .unwrap();
+                    if let Some(texture_handle) = material.bindings()[index].expect_texture() {
+                        gpu_texture = textures.get_gpu_texture_by_id(*texture_handle).unwrap();
                     } else {
                         gpu_texture = textures.get_default_gpu_texture();
                     }

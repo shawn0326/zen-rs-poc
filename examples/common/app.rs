@@ -3,12 +3,15 @@ use rand::Rng;
 use std::sync::Arc;
 use winit::window::Window;
 use zen_rs_poc::{
+    Resources,
     camera::{Camera, PerspectiveProjection},
-    graphics::{Geometry, Primitive, Texture, TextureSource},
+    graphics::{Geometry, Primitive},
     math::{Color4, Mat4, Vec3},
-    render::{LoadOp, RenderCollector, RenderTarget},
+    render::RenderCollector,
     scene::{Object3D, Scene},
     symbol,
+    target::{LoadOp, RenderTarget},
+    texture::{Texture, TextureSource},
     wgpu::Renderer,
 };
 
@@ -52,6 +55,7 @@ impl MainCamera {
 
 pub struct App<'window> {
     pub window: Arc<Window>,
+    resources: Resources,
     renderer: Renderer<'window>,
     screen_render_target: RenderTarget,
     render_collector: RenderCollector,
@@ -76,12 +80,15 @@ impl<'window> App<'window> {
 
         let surface = instance.create_surface(window.clone()).unwrap();
 
+        let mut resources = Resources::default();
+
         let renderer = Renderer::new(&instance, surface).await;
 
-        let mut screen_render_target = RenderTarget::from_surface(0, size.width, size.height);
+        let mut screen_render_target =
+            RenderTarget::from_surface(&mut resources, 0, size.width, size.height);
         let color_attachment_0 = screen_render_target.color_attachments.get_mut(0).unwrap();
         color_attachment_0.ops.load = LoadOp::Clear(Color4::new(0.1, 0.2, 0.3, 1.0));
-        screen_render_target.with_depth24();
+        screen_render_target.with_depth24(&mut resources);
 
         let render_collector = RenderCollector {};
 
@@ -96,6 +103,7 @@ impl<'window> App<'window> {
 
         Self {
             window,
+            resources,
             renderer,
             screen_render_target,
             render_collector,
@@ -105,19 +113,18 @@ impl<'window> App<'window> {
     }
 
     pub async fn new_benchmark(window: Arc<Window>, count: u32) -> Self {
-        let app = Self::new(window).await;
+        let mut app = Self::new(window).await;
 
         let diffuse_bytes = include_bytes!("../../assets/textures/logo.jpg");
         let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
         let diffuse_dimensions = diffuse_image.dimensions();
 
-        let texture = Texture::new()
-            .with_source(TextureSource::D2 {
-                data: diffuse_image.to_rgba8().into_raw(),
-                width: diffuse_dimensions.0,
-                height: diffuse_dimensions.1,
-            })
-            .into_ref();
+        let texture = Texture::new().with_source(TextureSource::D2 {
+            data: diffuse_image.to_rgba8().into_raw(),
+            width: diffuse_dimensions.0,
+            height: diffuse_dimensions.1,
+        });
+        let texture_handle = app.resources.insert_texture(texture);
 
         let geometry = Geometry::create_unit_cube();
         let geometry2 = Geometry::create_unit_quad();
@@ -130,7 +137,7 @@ impl<'window> App<'window> {
         material
             .borrow_mut()
             .set_param_vec4f(symbol!("albedo_factor"), [1.0, 1.0, 1.0, 1.0])
-            .set_param_t(symbol!("albedo_texture"), texture.clone());
+            .set_param_t(symbol!("albedo_texture"), texture_handle);
 
         let material2 =
             zen_rs_poc::material::Material::from_shader(pbr_shader.clone()).into_rc_cell();
@@ -174,13 +181,17 @@ impl<'window> App<'window> {
         self.camera
             .update_aspect(new_size.width as f32 / new_size.height as f32);
         self.screen_render_target
-            .resize(new_size.width, new_size.height);
+            .resize(&mut self.resources, new_size.width, new_size.height);
     }
 
     pub fn render(&mut self) {
         self.scene.update_world_matrix();
         let render_list = self.render_collector.collect(&self.scene);
-        self.renderer
-            .render(&render_list, &self.camera.inner, &self.screen_render_target);
+        self.renderer.render(
+            &render_list,
+            &self.camera.inner,
+            &self.screen_render_target,
+            &mut self.resources,
+        );
     }
 }

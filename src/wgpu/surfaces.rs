@@ -1,4 +1,5 @@
-use crate::{graphics::TextureSource, render::RenderTarget};
+use crate::target::RenderTarget;
+use crate::texture::TextureSource;
 use std::{
     collections::HashMap,
     sync::atomic::{AtomicU32, Ordering},
@@ -53,13 +54,14 @@ impl<'surf> Surfaces<'surf> {
         adapter: &wgpu::Adapter,
         device: &wgpu::Device,
         target: &RenderTarget,
+        resources: &crate::Resources,
     ) -> ActiveSurfaceTextures {
         let mut surface_textures = ActiveSurfaceTextures(HashMap::new());
 
         for color_attachment in target.color_attachments.iter() {
-            if let TextureSource::Surface { surface_id, .. } =
-                color_attachment.texture.borrow().source()
-            {
+            let texture_handle = color_attachment.texture;
+            let texture = resources.get_texture(texture_handle).unwrap();
+            if let TextureSource::Surface { surface_id, .. } = texture.source() {
                 let (width, height) = target.size();
                 let surface = self.map.get_mut(&surface_id);
 

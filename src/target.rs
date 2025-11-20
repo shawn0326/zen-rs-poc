@@ -1,7 +1,4 @@
-use crate::{
-    graphics::{Texture, TextureFormat, TextureRef, TextureSource},
-    math::Color4,
-};
+use crate::{Resources, TextureHandle, math::Color4, texture::*};
 
 #[derive(Copy, Clone, Debug)]
 pub enum LoadOp<V> {
@@ -54,13 +51,13 @@ where
 
 #[derive(Clone)]
 pub struct RenderTargetColorAttachment {
-    pub texture: TextureRef,
+    pub texture: TextureHandle,
     pub ops: Operations<Color4>,
 }
 
 #[derive(Clone)]
 pub struct RenderTargetDepthStencilAttachment {
-    pub texture: TextureRef,
+    pub texture: TextureHandle,
     pub depth_ops: Operations<f32>,
     pub stencil_ops: Operations<u32>,
 }
@@ -75,36 +72,36 @@ pub struct RenderTarget {
 }
 
 impl RenderTarget {
-    pub fn from_surface(surface_id: u32, width: u32, height: u32) -> Self {
+    pub fn from_surface(pools: &mut Resources, surface_id: u32, width: u32, height: u32) -> Self {
         let texture = Texture::new()
             .with_source(TextureSource::Surface {
                 surface_id,
                 width,
                 height,
             })
-            .with_format(TextureFormat::Rgba8UnormSrgb)
-            .into_ref();
+            .with_format(TextureFormat::Rgba8UnormSrgb);
+        let texture_handle = pools.textures_mut().insert(texture);
         Self {
             name: format!("RT_Surface_{}", surface_id),
             width,
             height,
             color_attachments: vec![RenderTargetColorAttachment {
-                texture,
+                texture: texture_handle,
                 ops: Operations::default(),
             }],
             depth_stencil_attachment: None,
         }
     }
 
-    pub fn with_depth24(&mut self) -> &mut Self {
+    pub fn with_depth24(&mut self, pools: &mut Resources) -> &mut Self {
+        let depth_texture = Texture::new()
+            .with_source(TextureSource::Render {
+                width: self.width,
+                height: self.height,
+            })
+            .with_format(TextureFormat::Depth24Plus);
         self.depth_stencil_attachment = Some(RenderTargetDepthStencilAttachment {
-            texture: Texture::new()
-                .with_source(TextureSource::Render {
-                    width: self.width,
-                    height: self.height,
-                })
-                .with_format(TextureFormat::Depth24Plus)
-                .into_ref(),
+            texture: pools.textures_mut().insert(depth_texture),
             depth_ops: Operations::default(),
             stencil_ops: Operations::default(),
         });
@@ -115,16 +112,18 @@ impl RenderTarget {
         (self.width, self.height)
     }
 
-    pub fn resize(&mut self, new_width: u32, new_height: u32) {
+    pub fn resize(&mut self, pools: &mut Resources, new_width: u32, new_height: u32) {
         self.width = new_width;
         self.height = new_height;
 
         if let Some(depth_stencil_attachment) = &self.depth_stencil_attachment {
-            let mut texture = depth_stencil_attachment.texture.borrow_mut();
-            texture.set_source(TextureSource::Render {
-                width: new_width,
-                height: new_height,
-            });
+            pools
+                .get_texture_mut(depth_stencil_attachment.texture)
+                .unwrap()
+                .set_source(TextureSource::Render {
+                    width: new_width,
+                    height: new_height,
+                });
         }
     }
 }

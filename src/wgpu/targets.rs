@@ -1,7 +1,7 @@
 use super::textures::Textures;
 use crate::{
-    graphics::TextureSource,
-    render::{LoadOp, RenderTarget, StoreOp},
+    target::{LoadOp, RenderTarget, StoreOp},
+    texture::TextureSource,
     wgpu::surfaces::ActiveSurfaceTextures,
 };
 
@@ -20,18 +20,24 @@ impl Targets {
         encoder: &'a mut wgpu::CommandEncoder,
         textures: &mut Textures,
         target: &RenderTarget,
+        resources: &crate::Resources,
     ) -> wgpu::RenderPass<'a> {
         let views: Vec<wgpu::TextureView> = target
             .color_attachments
             .iter()
             .map(|color_attachment| {
-                let texture = color_attachment.texture.borrow();
+                let texture_handle = color_attachment.texture;
+                let texture = resources.get_texture(texture_handle).unwrap();
 
                 let gpu_texture = match texture.source() {
                     TextureSource::Surface { surface_id, .. } => {
                         &surface_textures.get_surface_texture(*surface_id).texture
                     }
-                    _ => &textures.get_gpu_texture(device, queue, &*texture).texture,
+                    _ => {
+                        &textures
+                            .get_gpu_texture(device, queue, &*texture, texture_handle)
+                            .texture
+                    }
                 };
 
                 gpu_texture.create_view(&wgpu::TextureViewDescriptor::default())
@@ -68,8 +74,10 @@ impl Targets {
 
         let depth_stencil_attachment = match &target.depth_stencil_attachment {
             Some(depth_stencil_attachment) => {
-                let texture = depth_stencil_attachment.texture.borrow();
-                let gpu_texture = textures.get_gpu_texture(device, queue, &*texture);
+                let texture_handle = depth_stencil_attachment.texture;
+                let texture = resources.get_texture(texture_handle).unwrap();
+                let gpu_texture =
+                    textures.get_gpu_texture(device, queue, &*texture, texture_handle);
                 Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &gpu_texture
                         .texture
