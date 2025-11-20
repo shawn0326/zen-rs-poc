@@ -1,4 +1,8 @@
-use crate::texture::Texture;
+use crate::{
+    geometry::{Geometry, VertexBuffer},
+    material::Material,
+    texture::Texture,
+};
 use slotmap::{Key, SlotMap, new_key_type};
 
 pub struct Pool<K: Key, V> {
@@ -35,9 +39,15 @@ impl<K: Key, V> Pool<K, V> {
 }
 
 new_key_type! { pub struct TextureHandle; }
+new_key_type! { pub struct MaterialHandle; }
+new_key_type! { pub struct GeometryHandle; }
+new_key_type! { pub struct VertexBufferHandle; }
 
 pub struct Resources {
     textures: Pool<TextureHandle, Texture>,
+    materials: Pool<MaterialHandle, Material>,
+    geometries: Pool<GeometryHandle, Geometry>,
+    vertex_buffers: Pool<VertexBufferHandle, VertexBuffer>,
 }
 
 impl Resources {
@@ -72,10 +82,112 @@ impl Resources {
     }
 }
 
+impl Resources {
+    #[inline]
+    pub fn materials(&self) -> &Pool<MaterialHandle, Material> {
+        &self.materials
+    }
+
+    #[inline]
+    pub fn materials_mut(&mut self) -> &mut Pool<MaterialHandle, Material> {
+        &mut self.materials
+    }
+
+    #[inline]
+    pub fn insert_material(&mut self, material: Material) -> MaterialHandle {
+        self.materials.insert(material)
+    }
+
+    #[inline]
+    pub fn get_material(&self, handle: MaterialHandle) -> Option<&Material> {
+        self.materials.get(handle)
+    }
+
+    #[inline]
+    pub fn get_material_mut(&mut self, handle: MaterialHandle) -> Option<&mut Material> {
+        self.materials.get_mut(handle)
+    }
+
+    #[inline]
+    pub fn remove_material(&mut self, handle: MaterialHandle) -> Option<Material> {
+        self.materials.remove(handle)
+    }
+}
+
+impl Resources {
+    #[inline]
+    pub fn geometries(&self) -> &Pool<GeometryHandle, Geometry> {
+        &self.geometries
+    }
+
+    #[inline]
+    pub fn geometries_mut(&mut self) -> &mut Pool<GeometryHandle, Geometry> {
+        &mut self.geometries
+    }
+
+    #[inline]
+    pub fn insert_geometry(&mut self, geometry: Geometry) -> GeometryHandle {
+        self.geometries.insert(geometry)
+    }
+
+    #[inline]
+    pub fn get_geometry(&self, handle: GeometryHandle) -> Option<&Geometry> {
+        self.geometries.get(handle)
+    }
+
+    #[inline]
+    pub fn get_geometry_mut(&mut self, handle: GeometryHandle) -> Option<&mut Geometry> {
+        self.geometries.get_mut(handle)
+    }
+
+    #[inline]
+    pub fn remove_geometry(&mut self, handle: GeometryHandle) -> Option<Geometry> {
+        self.geometries.remove(handle)
+    }
+}
+
+impl Resources {
+    #[inline]
+    pub fn vertex_buffers(&self) -> &Pool<VertexBufferHandle, VertexBuffer> {
+        &self.vertex_buffers
+    }
+
+    #[inline]
+    pub fn vertex_buffers_mut(&mut self) -> &mut Pool<VertexBufferHandle, VertexBuffer> {
+        &mut self.vertex_buffers
+    }
+
+    #[inline]
+    pub fn insert_vertex_buffer(&mut self, vertex_buffer: VertexBuffer) -> VertexBufferHandle {
+        self.vertex_buffers.insert(vertex_buffer)
+    }
+
+    #[inline]
+    pub fn get_vertex_buffer(&self, handle: VertexBufferHandle) -> Option<&VertexBuffer> {
+        self.vertex_buffers.get(handle)
+    }
+
+    #[inline]
+    pub fn get_vertex_buffer_mut(
+        &mut self,
+        handle: VertexBufferHandle,
+    ) -> Option<&mut VertexBuffer> {
+        self.vertex_buffers.get_mut(handle)
+    }
+
+    #[inline]
+    pub fn remove_vertex_buffer(&mut self, handle: VertexBufferHandle) -> Option<VertexBuffer> {
+        self.vertex_buffers.remove(handle)
+    }
+}
+
 impl Default for Resources {
     fn default() -> Self {
         Self {
-            textures: Pool::new(64),
+            textures: Pool::new(32),
+            materials: Pool::new(32),
+            geometries: Pool::new(32),
+            vertex_buffers: Pool::new(32),
         }
     }
 }

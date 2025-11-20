@@ -16,8 +16,6 @@ use crate::Symbol;
 use crate::TextureHandle;
 use crate::math::*;
 use crate::shader::*;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 /// Builds binding storage for a given shader:
 /// - Uniform buffers are allocated with zeroed bytes sized by `total_size`.
@@ -65,11 +63,6 @@ macro_rules! impl_uniform_accessors {
     };
 }
 
-define_id!(MaterialId);
-
-/// Shared, interior-mutable handle to a `Material` (`Rc<RefCell<...>>`).
-pub type MaterialRcCell = Rc<RefCell<Material>>;
-
 /// Per-instance material data aligned with a `Shader`'s binding schema.
 ///
 /// - `shader`: the shader this material adheres to (layout/metadata source).
@@ -78,7 +71,6 @@ pub type MaterialRcCell = Rc<RefCell<Material>>;
 ///   - Texture: optional texture handle
 #[derive(Clone)]
 pub struct Material {
-    id: MaterialId,
     shader: ShaderRc,
     bindings: Box<[MaterialBindingData]>,
 }
@@ -91,29 +83,13 @@ impl Material {
     /// - Consumes `shader` (clone at callsite if you want to keep it).
     pub fn new(shader: ShaderRc) -> Self {
         let bindings = build_material_bindings(&shader);
-        Self {
-            id: MaterialId::new(),
-            shader,
-            bindings,
-        }
+        Self { shader, bindings }
     }
 
     /// Convenience alias of [`Material::new`].
     #[inline]
     pub fn from_shader(shader: ShaderRc) -> Self {
         Self::new(shader)
-    }
-
-    /// Converts this material into `Rc<RefCell<Material>>` for shared ownership.
-    #[inline]
-    pub fn into_rc_cell(self) -> MaterialRcCell {
-        Rc::new(RefCell::new(self))
-    }
-
-    /// Returns the material id.
-    #[inline]
-    pub(crate) fn id(&self) -> MaterialId {
-        self.id
     }
 
     /// Returns the underlying shader handle.

@@ -1,9 +1,12 @@
-use crate::graphics::{AttributeKey, Geometry, GeometryId};
+use crate::{
+    GeometryHandle, Resources,
+    geometry::{AttributeKey, Geometry},
+};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
 pub(super) struct Geometries {
-    map: HashMap<GeometryId, GpuGeometry>,
+    map: HashMap<GeometryHandle, GpuGeometry>,
 }
 
 impl Geometries {
@@ -13,12 +16,22 @@ impl Geometries {
         }
     }
 
-    pub fn get_gpu_geometry(&mut self, device: &wgpu::Device, geometry: &Geometry) -> &GpuGeometry {
-        let geometry_id = geometry.id();
+    pub fn get_gpu_geometry(
+        &mut self,
+        device: &wgpu::Device,
+        resources: &Resources,
+        geometry_handle: GeometryHandle,
+    ) -> &GpuGeometry {
+        let geometry = resources
+            .get_geometry(geometry_handle)
+            .expect("GeometryHandle is invalid");
 
-        self.map.entry(geometry_id).or_insert_with(|| {
-            println!("Creating GPU geometry for GeometryId {:?}", geometry_id);
-            let gpu_geometry = GpuGeometry::new(device, geometry);
+        self.map.entry(geometry_handle).or_insert_with(|| {
+            println!(
+                "Creating GPU geometry for GeometryHandle {:?}",
+                geometry_handle
+            );
+            let gpu_geometry = GpuGeometry::new(device, geometry, resources);
             gpu_geometry
         })
     }
@@ -34,7 +47,7 @@ pub(super) struct GpuGeometry {
 }
 
 impl GpuGeometry {
-    pub fn new(device: &wgpu::Device, geometry: &Geometry) -> Self {
+    pub fn new(device: &wgpu::Device, geometry: &Geometry, resources: &Resources) -> Self {
         let positions = geometry
             .get_attribute(AttributeKey::Positions)
             .expect("Geometry must have positions");
@@ -48,17 +61,29 @@ impl GpuGeometry {
 
         let positions_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&positions.buffer().borrow().data()),
+            contents: bytemuck::cast_slice(
+                resources
+                    .get_vertex_buffer(positions.buffer())
+                    .unwrap()
+                    .data(),
+            ),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let tex_coords_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&tex_coords.buffer().borrow().data()),
+            contents: bytemuck::cast_slice(
+                resources
+                    .get_vertex_buffer(tex_coords.buffer())
+                    .unwrap()
+                    .data(),
+            ),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let colors_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&colors.buffer().borrow().data()),
+            contents: bytemuck::cast_slice(
+                resources.get_vertex_buffer(colors.buffer()).unwrap().data(),
+            ),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

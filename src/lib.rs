@@ -1,18 +1,3 @@
-macro_rules! define_id {
-    ($name:ident) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-        pub(crate) struct $name(u64);
-
-        impl $name {
-            pub fn new() -> Self {
-                use std::sync::atomic::{AtomicU64, Ordering};
-                static COUNTER: AtomicU64 = AtomicU64::new(1);
-                Self(COUNTER.fetch_add(1, Ordering::Relaxed))
-            }
-        }
-    };
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Symbol(pub u64);
 
@@ -36,9 +21,10 @@ macro_rules! symbol {
 }
 
 pub mod camera;
-pub mod graphics;
+pub mod geometry;
 pub mod material;
 pub mod math;
+pub mod primitive;
 pub mod render;
 pub mod scene;
 pub mod shader;

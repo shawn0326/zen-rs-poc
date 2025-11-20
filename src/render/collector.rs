@@ -1,6 +1,5 @@
 use crate::{
-    graphics::GeometryRef,
-    material::MaterialRcCell,
+    GeometryHandle, MaterialHandle,
     math::Mat4,
     scene::{Object3D, Scene},
 };
@@ -24,7 +23,7 @@ impl RenderCollector {
         }
 
         // sort by material and geometry to minimize bind group changes
-        result.sort_by_key(|item| (item.material.borrow().id(), item.geometry.borrow().id()));
+        result.sort_by_key(|item| (item.material, item.geometry));
 
         result
     }
@@ -32,6 +31,6 @@ impl RenderCollector {
 
 pub struct RenderItem {
     pub world_matrix: Mat4,
-    pub geometry: GeometryRef,
-    pub material: MaterialRcCell,
+    pub geometry: GeometryHandle,
+    pub material: MaterialHandle,
 }

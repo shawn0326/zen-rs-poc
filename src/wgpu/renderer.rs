@@ -7,8 +7,7 @@ use super::{
     textures::Textures,
 };
 use crate::{
-    camera::Camera, graphics::Geometry, material::Material, render::RenderItem,
-    target::RenderTarget,
+    GeometryHandle, MaterialHandle, camera::Camera, render::RenderItem, target::RenderTarget,
 };
 
 pub struct Renderer<'surf> {
@@ -116,18 +115,22 @@ impl<'surf> Renderer<'surf> {
             let mut batch_start = 0u32;
             let mut indices = 0..0;
 
-            let mut current_material_ptr: Option<*const Material> = None;
-            let mut current_geometry_ptr: Option<*const Geometry> = None;
+            let mut current_material_handle: Option<MaterialHandle> = None;
+            let mut current_geometry_handle: Option<GeometryHandle> = None;
 
             for (i, render_item) in render_list.iter().enumerate() {
-                let geometry = render_item.geometry.borrow();
-                let material = render_item.material.borrow();
+                let geometry_handle = render_item.geometry;
+                let material_handle = render_item.material;
 
-                let geometry_ptr = (&*geometry) as *const Geometry;
-                let material_ptr = (&*material) as *const Material;
+                let material_changed = match current_material_handle {
+                    Some(handle) => handle != material_handle,
+                    None => true,
+                };
 
-                let geometry_changed = current_geometry_ptr != Some(geometry_ptr);
-                let material_changed = current_material_ptr != Some(material_ptr);
+                let geometry_changed = match current_geometry_handle {
+                    Some(handle) => handle != geometry_handle,
+                    None => true,
+                };
 
                 if geometry_changed || material_changed {
                     if i > 0 {
@@ -135,26 +138,29 @@ impl<'surf> Renderer<'surf> {
                         render_pass.draw_indexed(indices, 0, batch_start..(i as u32));
                     }
 
-                    let gpu_geometry = self.geometries.get_gpu_geometry(&self.device, &*geometry);
+                    let gpu_geometry =
+                        self.geometries
+                            .get_gpu_geometry(&self.device, resources, geometry_handle);
 
                     let gpu_material_bind_group =
                         self.material_bind_groups.get_material_bind_group(
                             &self.device,
                             &self.queue,
-                            &*material,
+                            material_handle,
                             &mut self.textures,
                             resources,
                         );
 
                     let pipeline = self.pipelines.set_pipeline(
                         &self.device,
-                        &render_item.material,
+                        material_handle,
                         &gpu_geometry.vertex_buffer_layouts(),
                         &[
                             global_bind_group.gpu_layout(),
                             primitive_bind_group.gpu_layout(),
                             &gpu_material_bind_group.bind_group_layout,
                         ],
+                        resources,
                     );
 
                     render_pass.set_pipeline(pipeline);
@@ -167,8 +173,8 @@ impl<'surf> Renderer<'surf> {
                         gpu_geometry.set_buffers_to_render_pass(&mut render_pass);
                     }
 
-                    current_material_ptr = Some(material_ptr);
-                    current_geometry_ptr = Some(geometry_ptr);
+                    current_material_handle = Some(material_handle);
+                    current_geometry_handle = Some(geometry_handle);
 
                     batch_start = i as u32;
                     indices = 0..gpu_geometry.num_indices;

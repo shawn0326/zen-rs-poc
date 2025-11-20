@@ -5,8 +5,9 @@ use winit::window::Window;
 use zen_rs_poc::{
     Resources,
     camera::{Camera, PerspectiveProjection},
-    graphics::{Geometry, Primitive},
+    geometry::Geometry,
     math::{Color4, Mat4, Vec3},
+    primitive::Primitive,
     render::RenderCollector,
     scene::{Object3D, Scene},
     symbol,
@@ -126,41 +127,43 @@ impl<'window> App<'window> {
         });
         let texture_handle = app.resources.insert_texture(texture);
 
-        let geometry = Geometry::create_unit_cube();
-        let geometry2 = Geometry::create_unit_quad();
+        let geometry1 = Geometry::create_unit_cube(&mut app.resources);
+        let geometry2 = Geometry::create_unit_quad(&mut app.resources);
+
+        let geometry1_handle = app.resources.insert_geometry(geometry1);
+        let geometry2_handle = app.resources.insert_geometry(geometry2);
 
         let unlit_shader = zen_rs_poc::shader::builtins::unlit_shader();
         let pbr_shader = zen_rs_poc::shader::builtins::pbr_shader();
 
-        let material =
-            zen_rs_poc::material::Material::from_shader(unlit_shader.clone()).into_rc_cell();
-        material
-            .borrow_mut()
+        let mut material1 = zen_rs_poc::material::Material::from_shader(unlit_shader.clone());
+        material1
             .set_param_vec4f(symbol!("albedo_factor"), [1.0, 1.0, 1.0, 1.0])
             .set_param_t(symbol!("albedo_texture"), texture_handle);
 
-        let material2 =
-            zen_rs_poc::material::Material::from_shader(pbr_shader.clone()).into_rc_cell();
+        let mut material2 = zen_rs_poc::material::Material::from_shader(pbr_shader.clone());
         material2
-            .borrow_mut()
             .set_param_col4(symbol!("albedo_factor"), Color4::new(0.4, 0.4, 1.0, 1.0))
             .set_param_f(symbol!("roughness"), 0.5)
             .set_param_f(symbol!("metallic"), 0.0);
 
+        let material1_handle = app.resources.insert_material(material1);
+        let material2_handle = app.resources.insert_material(material2);
+
         let mut rng = rand::thread_rng();
 
         for i in 0..count {
-            let geom_ref = if i % 2 == 0 {
-                geometry.clone()
+            let geometry_handle = if i % 2 == 0 {
+                geometry1_handle
             } else {
-                geometry2.clone()
+                geometry2_handle
             };
-            let mat_ref = if i % 3 == 0 {
-                material.clone()
+            let material_handle = if i % 3 == 0 {
+                material1_handle
             } else {
-                material2.clone()
+                material2_handle
             };
-            let primitive = Primitive::new(geom_ref, mat_ref);
+            let primitive = Primitive::new(geometry_handle, material_handle);
 
             let obj = Object3D::new();
             obj.position.set(Vec3::new(

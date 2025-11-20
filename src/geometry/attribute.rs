@@ -1,4 +1,4 @@
-use super::vertex_buffer::{VertexBuffer, VertexBufferRef};
+use crate::VertexBufferHandle;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttributeKey {
@@ -35,21 +35,21 @@ impl ToString for AttributeKey {
 
 #[derive(Clone)]
 pub struct Attribute {
-    buffer: VertexBufferRef,
+    buffer: VertexBufferHandle,
     offset: u8,
     components: u8,
 }
 
 impl Attribute {
-    pub fn new() -> Self {
+    pub fn from_buffer(buffer: VertexBufferHandle) -> Self {
         Self {
-            buffer: VertexBuffer::new().into_ref(),
+            buffer,
             offset: 0,
             components: 0,
         }
     }
 
-    pub fn with_buffer(mut self, buffer: VertexBufferRef) -> Self {
+    pub fn with_buffer(mut self, buffer: VertexBufferHandle) -> Self {
         self.buffer = buffer;
         self
     }
@@ -64,13 +64,13 @@ impl Attribute {
         self
     }
 
-    pub fn set_buffer(&mut self, buffer: VertexBufferRef) -> &mut Self {
+    pub fn set_buffer(&mut self, buffer: VertexBufferHandle) -> &mut Self {
         self.buffer = buffer;
         self
     }
 
-    pub fn buffer(&self) -> &VertexBufferRef {
-        &self.buffer
+    pub fn buffer(&self) -> VertexBufferHandle {
+        self.buffer
     }
 
     pub fn set_offset(&mut self, offset: u8) -> &mut Self {

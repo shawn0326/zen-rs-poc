@@ -1,11 +1,9 @@
+use crate::{Resources, VertexBufferHandle};
 use std::{cell::RefCell, rc::Rc};
-
-define_id!(VertexBufferId);
 
 pub type VertexBufferRef = Rc<RefCell<VertexBuffer>>;
 
 pub struct VertexBuffer {
-    id: VertexBufferId,
     data: Vec<f32>,
     stride: u8,
 }
@@ -13,10 +11,13 @@ pub struct VertexBuffer {
 impl VertexBuffer {
     pub fn new() -> Self {
         Self {
-            id: VertexBufferId::new(),
             data: Vec::new(),
             stride: 0,
         }
+    }
+
+    pub fn into_handle(self, resources: &mut Resources) -> VertexBufferHandle {
+        resources.insert_vertex_buffer(self)
     }
 
     pub fn with_data(mut self, data: Vec<f32>) -> Self {
@@ -27,15 +28,6 @@ impl VertexBuffer {
     pub fn with_stride(mut self, stride: u8) -> Self {
         self.stride = stride;
         self
-    }
-
-    pub fn into_ref(self) -> VertexBufferRef {
-        Rc::new(RefCell::new(self))
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn id(&self) -> VertexBufferId {
-        self.id
     }
 
     pub fn set_data(&mut self, data: Vec<f32>) -> &mut Self {
@@ -68,7 +60,6 @@ impl VertexBuffer {
 impl Clone for VertexBuffer {
     fn clone(&self) -> Self {
         Self {
-            id: self.id,
             data: self.data.clone(),
             stride: self.stride,
         }

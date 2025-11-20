@@ -1,10 +1,9 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
-
-use crate::material::{Material, MaterialId};
+use crate::MaterialHandle;
+use std::collections::HashMap;
 
 pub(super) struct Pipelines {
     format: wgpu::TextureFormat,
-    map: HashMap<MaterialId, wgpu::RenderPipeline>,
+    map: HashMap<MaterialHandle, wgpu::RenderPipeline>,
 }
 
 impl Pipelines {
@@ -18,17 +17,16 @@ impl Pipelines {
     pub fn set_pipeline(
         &mut self,
         device: &wgpu::Device,
-        material: &Rc<RefCell<Material>>,
+        material_handle: MaterialHandle,
         vertex_buffer_layout: &[wgpu::VertexBufferLayout],
         bindgroup_layout: &[&wgpu::BindGroupLayout],
+        resources: &crate::Resources,
     ) -> &wgpu::RenderPipeline {
-        let material = material.borrow();
-
-        let material_id = material.id();
-
-        match self.map.entry(material_id) {
+        match self.map.entry(material_handle) {
             std::collections::hash_map::Entry::Occupied(o) => o.into_mut(),
             std::collections::hash_map::Entry::Vacant(v) => {
+                let material = resources.get_material(material_handle).unwrap();
+
                 let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("Shader"),
                     source: wgpu::ShaderSource::Wgsl(material.shader().source().into()),

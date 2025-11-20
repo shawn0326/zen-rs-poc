@@ -1,5 +1,5 @@
-use crate::graphics::Primitive;
 use crate::math::{EulerRot, Mat4, Quat, Vec3};
+use crate::primitive::Primitive;
 use std::cell::{Cell, Ref, RefCell};
 use std::ptr;
 use std::rc::{Rc, Weak};

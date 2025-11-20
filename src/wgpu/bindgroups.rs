@@ -2,7 +2,7 @@ mod global;
 mod material;
 mod primitive;
 use super::textures::Textures;
-use crate::material::{Material, MaterialId};
+use crate::MaterialHandle;
 pub(super) use global::GlobalBindGroup;
 pub(super) use material::GpuMaterialBindGroup;
 pub(super) use primitive::PrimitiveBindGroup;
@@ -10,7 +10,7 @@ pub(super) use primitive::PrimitiveBindGroup;
 use std::collections::{HashMap, hash_map::Entry};
 
 pub(super) struct MaterialBindGroups {
-    map: HashMap<MaterialId, GpuMaterialBindGroup>,
+    map: HashMap<MaterialHandle, GpuMaterialBindGroup>,
 }
 
 impl MaterialBindGroups {
@@ -24,13 +24,13 @@ impl MaterialBindGroups {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        material: &Material,
+        material_handle: MaterialHandle,
         textures: &mut Textures,
         resources: &crate::Resources,
     ) -> &GpuMaterialBindGroup {
-        let material_id = material.id();
+        let material = resources.get_material(material_handle).unwrap();
 
-        match self.map.entry(material_id) {
+        match self.map.entry(material_handle) {
             Entry::Occupied(o) => o.into_mut(),
             Entry::Vacant(v) => {
                 let gpu_material_bind_group =

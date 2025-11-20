@@ -1,24 +1,31 @@
 use criterion::{Criterion, criterion_group, criterion_main};
+use std::hint::black_box;
 use std::rc::Rc;
-use std::{cell::RefCell, hint::black_box};
+use zen_rs_poc::GeometryHandle;
 use zen_rs_poc::{
-    graphics::{Geometry, Primitive},
+    MaterialHandle, Resources,
+    geometry::Geometry,
     material::Material,
+    primitive::Primitive,
     scene::{Object3D, Scene},
 };
 
 const PYRAMID_LEVELS: usize = 8;
 
 fn build_pyramid_scene() -> Scene {
+    let mut resources = Resources::default();
     let scene = Scene::new();
-    let geometry = Geometry::create_unit_cube();
+    let geometry = Geometry::create_unit_cube(&mut resources);
     let shader = zen_rs_poc::shader::builtins::pbr_shader();
-    let material = Material::from_shader(shader.clone()).into_rc_cell();
+    let material = Material::from_shader(shader.clone());
+
+    let geometry_handle = resources.insert_geometry(geometry);
+    let material_handle = resources.insert_material(material);
 
     fn build_level(
         parent: &Rc<Object3D>,
-        geometry: &Rc<RefCell<Geometry>>,
-        material: &Rc<RefCell<Material>>,
+        geometry_handle: GeometryHandle,
+        material_handle: MaterialHandle,
         current_level: usize,
         max_levels: usize,
     ) {
@@ -28,14 +35,26 @@ fn build_pyramid_scene() -> Scene {
         let children_count = max_levels - current_level;
         for _ in 0..children_count {
             let obj = Object3D::new();
-            let primitive = Primitive::new(geometry.clone(), material.clone());
+            let primitive = Primitive::new(geometry_handle, material_handle);
             obj.primitives.borrow_mut().push(primitive);
             Object3D::add(parent, &obj);
-            build_level(&obj, geometry, material, current_level + 1, max_levels);
+            build_level(
+                &obj,
+                geometry_handle,
+                material_handle,
+                current_level + 1,
+                max_levels,
+            );
         }
     }
 
-    build_level(&scene.root, &geometry, &material, 0, PYRAMID_LEVELS);
+    build_level(
+        &scene.root,
+        geometry_handle,
+        material_handle,
+        0,
+        PYRAMID_LEVELS,
+    );
     scene
 }
 

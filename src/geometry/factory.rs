@@ -1,48 +1,44 @@
-use super::{Attribute, AttributeKey, Geometry, GeometryRef, VertexBuffer};
+use super::{Attribute, AttributeKey, Geometry, VertexBuffer};
 
 impl Geometry {
-    pub fn create_unit_quad() -> GeometryRef {
+    pub fn create_unit_quad(resources: &mut crate::Resources) -> Geometry {
         let positions_buffer = VertexBuffer::new()
             .with_data(vec![
                 -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
             ])
             .with_stride(3)
-            .into_ref();
-        let positions = Attribute::new()
-            .with_buffer(positions_buffer)
-            .with_components(3);
+            .into_handle(resources);
+        let positions = Attribute::from_buffer(positions_buffer).with_components(3);
 
         let tex_coords_buffer = VertexBuffer::new()
             .with_data(vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0])
             .with_stride(2)
-            .into_ref();
-        let tex_coords = Attribute::new()
-            .with_buffer(tex_coords_buffer)
-            .with_components(2);
+            .into_handle(resources);
+        let tex_coords = Attribute::from_buffer(tex_coords_buffer).with_components(2);
 
         let colors_buffer = VertexBuffer::new()
             .with_data(vec![
                 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
             ])
             .with_stride(3)
-            .into_ref();
-        let colors = Attribute::new()
-            .with_buffer(colors_buffer)
-            .with_components(3);
+            .into_handle(resources);
+        let colors = Attribute::from_buffer(colors_buffer).with_components(3);
 
         Self::new()
             .with_attribute(AttributeKey::Positions, positions)
             .with_attribute(AttributeKey::TexCoords, tex_coords)
             .with_attribute(AttributeKey::Colors, colors)
             .with_indices(vec![0, 1, 2, 2, 3, 0])
-            .into_ref()
     }
 
-    pub fn create_unit_cube() -> GeometryRef {
-        Self::create_box((1.0, 1.0, 1.0))
+    pub fn create_unit_cube(resources: &mut crate::Resources) -> Geometry {
+        Self::create_box(resources, (1.0, 1.0, 1.0))
     }
 
-    pub fn create_box((width, height, depth): (f32, f32, f32)) -> GeometryRef {
+    pub fn create_box(
+        resources: &mut crate::Resources,
+        (width, height, depth): (f32, f32, f32),
+    ) -> Geometry {
         let hw = width * 0.5;
         let hh = height * 0.5;
         let hd = depth * 0.5;
@@ -75,31 +71,24 @@ impl Geometry {
         let positions_buffer = VertexBuffer::new()
             .with_data(positions)
             .with_stride(3)
-            .into_ref();
+            .into_handle(resources);
         let tex_coords_buffer = VertexBuffer::new()
             .with_data(tex_coords)
             .with_stride(2)
-            .into_ref();
+            .into_handle(resources);
         let colors_buffer = VertexBuffer::new()
             .with_data(colors)
             .with_stride(3)
-            .into_ref();
+            .into_handle(resources);
 
-        let positions_attr = Attribute::new()
-            .with_buffer(positions_buffer)
-            .with_components(3);
-        let tex_coords_attr = Attribute::new()
-            .with_buffer(tex_coords_buffer)
-            .with_components(2);
-        let colors_attr = Attribute::new()
-            .with_buffer(colors_buffer)
-            .with_components(3);
+        let positions_attr = Attribute::from_buffer(positions_buffer).with_components(3);
+        let tex_coords_attr = Attribute::from_buffer(tex_coords_buffer).with_components(2);
+        let colors_attr = Attribute::from_buffer(colors_buffer).with_components(3);
 
         Self::new()
             .with_attribute(AttributeKey::Positions, positions_attr)
             .with_attribute(AttributeKey::TexCoords, tex_coords_attr)
             .with_attribute(AttributeKey::Colors, colors_attr)
             .with_indices(indices)
-            .into_ref()
     }
 }

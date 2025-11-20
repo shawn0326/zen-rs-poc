@@ -1,18 +1,14 @@
 mod attribute;
 mod factory;
 mod vertex_buffer;
+
 pub use attribute::{Attribute, AttributeKey};
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
 pub use vertex_buffer::{VertexBuffer, VertexBufferRef};
 
-define_id!(GeometryId);
-
-pub type GeometryRef = Rc<RefCell<Geometry>>;
+use crate::{GeometryHandle, Resources};
+use std::collections::HashMap;
 
 pub struct Geometry {
-    id: GeometryId,
     attributes: HashMap<AttributeKey, Attribute>,
     indices: Option<Vec<u32>>,
 }
@@ -20,10 +16,13 @@ pub struct Geometry {
 impl Geometry {
     pub fn new() -> Self {
         Geometry {
-            id: GeometryId::new(),
             attributes: HashMap::new(),
             indices: None,
         }
+    }
+
+    pub fn into_handle(self, resources: &mut Resources) -> GeometryHandle {
+        resources.insert_geometry(self)
     }
 
     pub fn with_attribute(mut self, key: impl Into<AttributeKey>, attr: Attribute) -> Self {
@@ -34,14 +33,6 @@ impl Geometry {
     pub fn with_indices(mut self, indices: Vec<u32>) -> Self {
         self.indices = Some(indices);
         self
-    }
-
-    pub fn into_ref(self) -> GeometryRef {
-        Rc::new(RefCell::new(self))
-    }
-
-    pub(crate) fn id(&self) -> GeometryId {
-        self.id
     }
 
     pub fn set_attribute(&mut self, key: impl Into<AttributeKey>, attr: Attribute) -> &mut Self {
@@ -76,7 +67,6 @@ impl Geometry {
 impl Clone for Geometry {
     fn clone(&self) -> Self {
         Self {
-            id: GeometryId::new(),
             attributes: self.attributes.clone(),
             indices: self.indices.clone(),
         }
