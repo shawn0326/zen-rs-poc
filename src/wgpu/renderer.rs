@@ -7,7 +7,7 @@ use super::{
     textures::Textures,
 };
 use crate::{
-    GeometryHandle, MaterialHandle, camera::Camera, render::RenderItem, target::RenderTarget,
+    GeometryHandle, MaterialHandle, camera::Camera, primitive::Primitive, target::RenderTarget,
 };
 
 pub struct Renderer<'surf> {
@@ -78,7 +78,7 @@ impl<'surf> Renderer<'surf> {
 
     pub fn render(
         &mut self,
-        render_list: &[RenderItem],
+        primitives: &[Primitive],
         camera: &Camera,
         target: &RenderTarget,
         resources: &crate::Resources,
@@ -107,7 +107,7 @@ impl<'surf> Renderer<'surf> {
             let global_bind_group = &self.global_bind_group;
             let primitive_bind_group = self
                 .primitive_bind_group
-                .prepare(&self.device, render_list.len());
+                .prepare(&self.device, primitives.len());
 
             render_pass.set_bind_group(0, global_bind_group.gpu_bind_group(), &[]);
             render_pass.set_bind_group(1, primitive_bind_group.gpu_bind_group(), &[]);
@@ -118,9 +118,9 @@ impl<'surf> Renderer<'surf> {
             let mut current_material_handle: Option<MaterialHandle> = None;
             let mut current_geometry_handle: Option<GeometryHandle> = None;
 
-            for (i, render_item) in render_list.iter().enumerate() {
-                let geometry_handle = render_item.geometry;
-                let material_handle = render_item.material;
+            for (i, primitive) in primitives.iter().enumerate() {
+                let geometry_handle = primitive.geometry();
+                let material_handle = primitive.material();
 
                 let material_changed = match current_material_handle {
                     Some(handle) => handle != material_handle,
@@ -180,12 +180,12 @@ impl<'surf> Renderer<'surf> {
                     indices = 0..gpu_geometry.num_indices;
                 }
 
-                primitive_bind_group.push_data(&render_item.world_matrix);
+                primitive_bind_group.push_data(&primitive.transform());
             }
 
-            if !render_list.is_empty() {
+            if !primitives.is_empty() {
                 // flush last batch
-                render_pass.draw_indexed(indices, 0, batch_start..(render_list.len() as u32));
+                render_pass.draw_indexed(indices, 0, batch_start..(primitives.len() as u32));
             }
 
             global_bind_group.upload(&self.queue, camera);

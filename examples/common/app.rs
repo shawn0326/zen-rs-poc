@@ -8,8 +8,6 @@ use zen_rs_poc::{
     geometry::Geometry,
     math::{Color4, Mat4, Vec3},
     primitive::Primitive,
-    render::RenderCollector,
-    scene::{Object3D, Scene},
     symbol,
     target::{LoadOp, RenderTarget},
     texture::{Texture, TextureSource},
@@ -59,8 +57,7 @@ pub struct App<'window> {
     resources: Resources,
     renderer: Renderer<'window>,
     screen_render_target: RenderTarget,
-    render_collector: RenderCollector,
-    pub scene: Scene,
+    primitives: Vec<Primitive>,
     pub camera: MainCamera,
 }
 
@@ -91,10 +88,6 @@ impl<'window> App<'window> {
         color_attachment_0.ops.load = LoadOp::Clear(Color4::new(0.1, 0.2, 0.3, 1.0));
         screen_render_target.with_depth24(&mut resources);
 
-        let render_collector = RenderCollector {};
-
-        let scene = Scene::new();
-
         let camera = MainCamera::new(
             (0.0, 0.0, 10.0).into(),
             (0.0, 0.0, 0.0).into(),
@@ -107,8 +100,7 @@ impl<'window> App<'window> {
             resources,
             renderer,
             screen_render_target,
-            render_collector,
-            scene,
+            primitives: Vec::new(),
             camera,
         }
     }
@@ -152,6 +144,8 @@ impl<'window> App<'window> {
 
         let mut rng = rand::thread_rng();
 
+        let primitives = &mut app.primitives;
+
         for i in 0..count {
             let geometry_handle = if i % 2 == 0 {
                 geometry1_handle
@@ -163,18 +157,20 @@ impl<'window> App<'window> {
             } else {
                 material2_handle
             };
-            let primitive = Primitive::new(geometry_handle, material_handle);
 
-            let obj = Object3D::new();
-            obj.position.set(Vec3::new(
+            let position = Vec3::new(
                 rng.gen_range(-2.0..2.0),
                 rng.gen_range(-2.0..2.0),
                 rng.gen_range(-2.0..2.0),
-            ));
-            obj.scale.set(Vec3::splat(rng.gen_range(0.02..0.08)));
-            obj.primitives.borrow_mut().push(primitive);
+            );
+            let scale = Vec3::splat(rng.gen_range(0.02..0.08));
+            let transform =
+                Mat4::from_scale_rotation_translation(scale, glam::Quat::IDENTITY, position);
 
-            app.scene.add(&obj);
+            let mut primitive = Primitive::new(geometry_handle, material_handle);
+            primitive.set_transform(transform);
+
+            primitives.push(primitive);
         }
 
         app
@@ -188,10 +184,10 @@ impl<'window> App<'window> {
     }
 
     pub fn render(&mut self) {
-        self.scene.update_world_matrix();
-        let render_list = self.render_collector.collect(&self.scene);
+        self.primitives
+            .sort_by_key(|item| (item.material(), item.geometry()));
         self.renderer.render(
-            &render_list,
+            &self.primitives,
             &self.camera.inner,
             &self.screen_render_target,
             &mut self.resources,

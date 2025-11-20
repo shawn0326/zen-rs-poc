@@ -25,8 +25,6 @@ pub mod geometry;
 pub mod material;
 pub mod math;
 pub mod primitive;
-pub mod render;
-pub mod scene;
 pub mod shader;
 pub mod target;
 pub mod texture;

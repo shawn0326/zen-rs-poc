@@ -52,16 +52,6 @@ pub struct Resources {
 
 impl Resources {
     #[inline]
-    pub fn textures(&self) -> &Pool<TextureHandle, Texture> {
-        &self.textures
-    }
-
-    #[inline]
-    pub fn textures_mut(&mut self) -> &mut Pool<TextureHandle, Texture> {
-        &mut self.textures
-    }
-
-    #[inline]
     pub fn insert_texture(&mut self, texture: Texture) -> TextureHandle {
         self.textures.insert(texture)
     }
@@ -83,16 +73,6 @@ impl Resources {
 }
 
 impl Resources {
-    #[inline]
-    pub fn materials(&self) -> &Pool<MaterialHandle, Material> {
-        &self.materials
-    }
-
-    #[inline]
-    pub fn materials_mut(&mut self) -> &mut Pool<MaterialHandle, Material> {
-        &mut self.materials
-    }
-
     #[inline]
     pub fn insert_material(&mut self, material: Material) -> MaterialHandle {
         self.materials.insert(material)
@@ -116,16 +96,6 @@ impl Resources {
 
 impl Resources {
     #[inline]
-    pub fn geometries(&self) -> &Pool<GeometryHandle, Geometry> {
-        &self.geometries
-    }
-
-    #[inline]
-    pub fn geometries_mut(&mut self) -> &mut Pool<GeometryHandle, Geometry> {
-        &mut self.geometries
-    }
-
-    #[inline]
     pub fn insert_geometry(&mut self, geometry: Geometry) -> GeometryHandle {
         self.geometries.insert(geometry)
     }
@@ -147,16 +117,6 @@ impl Resources {
 }
 
 impl Resources {
-    #[inline]
-    pub fn vertex_buffers(&self) -> &Pool<VertexBufferHandle, VertexBuffer> {
-        &self.vertex_buffers
-    }
-
-    #[inline]
-    pub fn vertex_buffers_mut(&mut self) -> &mut Pool<VertexBufferHandle, VertexBuffer> {
-        &mut self.vertex_buffers
-    }
-
     #[inline]
     pub fn insert_vertex_buffer(&mut self, vertex_buffer: VertexBuffer) -> VertexBufferHandle {
         self.vertex_buffers.insert(vertex_buffer)
