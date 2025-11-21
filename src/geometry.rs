@@ -2,14 +2,14 @@ mod attribute;
 mod factory;
 mod vertex_buffer;
 
-pub use attribute::{Attribute, AttributeKey};
+pub use attribute::Attribute;
 pub use vertex_buffer::{VertexBuffer, VertexBufferRef};
 
-use crate::{GeometryHandle, Resources};
+use crate::{GeometryHandle, Resources, Symbol};
 use std::collections::HashMap;
 
 pub struct Geometry {
-    attributes: HashMap<AttributeKey, Attribute>,
+    attributes: HashMap<Symbol, Attribute>,
     indices: Option<Vec<u32>>,
 }
 
@@ -25,8 +25,8 @@ impl Geometry {
         resources.insert_geometry(self)
     }
 
-    pub fn with_attribute(mut self, key: impl Into<AttributeKey>, attr: Attribute) -> Self {
-        self.attributes.insert(key.into(), attr);
+    pub fn with_attribute(mut self, key: Symbol, attr: Attribute) -> Self {
+        self.attributes.insert(key, attr);
         self
     }
 
@@ -35,18 +35,18 @@ impl Geometry {
         self
     }
 
-    pub fn set_attribute(&mut self, key: impl Into<AttributeKey>, attr: Attribute) -> &mut Self {
-        self.attributes.insert(key.into(), attr);
+    pub fn set_attribute(&mut self, key: Symbol, attr: Attribute) -> &mut Self {
+        self.attributes.insert(key, attr);
         self
     }
 
-    pub fn remove_attribute(&mut self, key: impl Into<AttributeKey>) -> &mut Self {
-        self.attributes.remove(&key.into());
+    pub fn remove_attribute(&mut self, key: Symbol) -> &mut Self {
+        self.attributes.remove(&key);
         self
     }
 
-    pub fn get_attribute(&self, key: impl Into<AttributeKey>) -> Option<&Attribute> {
-        self.attributes.get(&key.into())
+    pub fn get_attribute(&self, key: Symbol) -> Option<&Attribute> {
+        self.attributes.get(&key)
     }
 
     pub fn set_indices(&mut self, idx: Vec<u32>) -> &mut Self {

@@ -9,7 +9,7 @@ use zen_rs_poc::{
     math::{Color4, Mat4, Vec3},
     primitive::Primitive,
     symbol,
-    target::{LoadOp, RenderTarget},
+    target::{LoadOp, RenderTarget, RenderTargetBuilder},
     texture::{Texture, TextureSource},
     wgpu::Renderer,
 };
@@ -82,11 +82,14 @@ impl<'window> App<'window> {
 
         let renderer = Renderer::new(&instance, surface).await;
 
-        let mut screen_render_target =
-            RenderTarget::from_surface(&mut resources, 0, size.width, size.height);
-        let color_attachment_0 = screen_render_target.color_attachments.get_mut(0).unwrap();
+        let mut screen_render_target = RenderTargetBuilder::new()
+            .name("Screen Render Target")
+            .size(size.width, size.height)
+            .attach_surface(0)
+            .attach_depth24()
+            .build(&mut resources);
+        let color_attachment_0 = &mut screen_render_target.color_attachments_mut()[0];
         color_attachment_0.ops.load = LoadOp::Clear(Color4::new(0.1, 0.2, 0.3, 1.0));
-        screen_render_target.with_depth24(&mut resources);
 
         let camera = MainCamera::new(
             (0.0, 0.0, 10.0).into(),
@@ -112,7 +115,7 @@ impl<'window> App<'window> {
         let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
         let diffuse_dimensions = diffuse_image.dimensions();
 
-        let texture = Texture::new().with_source(TextureSource::D2 {
+        let texture = Texture::default().with_source(TextureSource::D2 {
             data: diffuse_image.to_rgba8().into_raw(),
             width: diffuse_dimensions.0,
             height: diffuse_dimensions.1,
@@ -180,7 +183,7 @@ impl<'window> App<'window> {
         self.camera
             .update_aspect(new_size.width as f32 / new_size.height as f32);
         self.screen_render_target
-            .resize(&mut self.resources, new_size.width, new_size.height);
+            .set_size(&mut self.resources, new_size.width, new_size.height);
     }
 
     pub fn render(&mut self) {

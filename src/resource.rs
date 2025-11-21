@@ -50,97 +50,6 @@ pub struct Resources {
     vertex_buffers: Pool<VertexBufferHandle, VertexBuffer>,
 }
 
-impl Resources {
-    #[inline]
-    pub fn insert_texture(&mut self, texture: Texture) -> TextureHandle {
-        self.textures.insert(texture)
-    }
-
-    #[inline]
-    pub fn get_texture(&self, handle: TextureHandle) -> Option<&Texture> {
-        self.textures.get(handle)
-    }
-
-    #[inline]
-    pub fn get_texture_mut(&mut self, handle: TextureHandle) -> Option<&mut Texture> {
-        self.textures.get_mut(handle)
-    }
-
-    #[inline]
-    pub fn remove_texture(&mut self, handle: TextureHandle) -> Option<Texture> {
-        self.textures.remove(handle)
-    }
-}
-
-impl Resources {
-    #[inline]
-    pub fn insert_material(&mut self, material: Material) -> MaterialHandle {
-        self.materials.insert(material)
-    }
-
-    #[inline]
-    pub fn get_material(&self, handle: MaterialHandle) -> Option<&Material> {
-        self.materials.get(handle)
-    }
-
-    #[inline]
-    pub fn get_material_mut(&mut self, handle: MaterialHandle) -> Option<&mut Material> {
-        self.materials.get_mut(handle)
-    }
-
-    #[inline]
-    pub fn remove_material(&mut self, handle: MaterialHandle) -> Option<Material> {
-        self.materials.remove(handle)
-    }
-}
-
-impl Resources {
-    #[inline]
-    pub fn insert_geometry(&mut self, geometry: Geometry) -> GeometryHandle {
-        self.geometries.insert(geometry)
-    }
-
-    #[inline]
-    pub fn get_geometry(&self, handle: GeometryHandle) -> Option<&Geometry> {
-        self.geometries.get(handle)
-    }
-
-    #[inline]
-    pub fn get_geometry_mut(&mut self, handle: GeometryHandle) -> Option<&mut Geometry> {
-        self.geometries.get_mut(handle)
-    }
-
-    #[inline]
-    pub fn remove_geometry(&mut self, handle: GeometryHandle) -> Option<Geometry> {
-        self.geometries.remove(handle)
-    }
-}
-
-impl Resources {
-    #[inline]
-    pub fn insert_vertex_buffer(&mut self, vertex_buffer: VertexBuffer) -> VertexBufferHandle {
-        self.vertex_buffers.insert(vertex_buffer)
-    }
-
-    #[inline]
-    pub fn get_vertex_buffer(&self, handle: VertexBufferHandle) -> Option<&VertexBuffer> {
-        self.vertex_buffers.get(handle)
-    }
-
-    #[inline]
-    pub fn get_vertex_buffer_mut(
-        &mut self,
-        handle: VertexBufferHandle,
-    ) -> Option<&mut VertexBuffer> {
-        self.vertex_buffers.get_mut(handle)
-    }
-
-    #[inline]
-    pub fn remove_vertex_buffer(&mut self, handle: VertexBufferHandle) -> Option<VertexBuffer> {
-        self.vertex_buffers.remove(handle)
-    }
-}
-
 impl Default for Resources {
     fn default() -> Self {
         Self {
@@ -150,6 +59,39 @@ impl Default for Resources {
             vertex_buffers: Pool::new(32),
         }
     }
+}
+
+macro_rules! resource_methods {
+    ($ty:ident, $handle:ident, $field:ident) => {
+        paste::paste! {
+            #[inline]
+            pub fn [<insert_ $ty:snake>](&mut self, value: $ty) -> $handle {
+                self.$field.insert(value)
+            }
+
+            #[inline]
+            pub fn [<get_ $ty:snake>](&self, handle: $handle) -> Option<&$ty> {
+                self.$field.get(handle)
+            }
+
+            #[inline]
+            pub fn [<get_ $ty:snake _mut>](&mut self, handle: $handle) -> Option<&mut $ty> {
+                self.$field.get_mut(handle)
+            }
+
+            #[inline]
+            pub fn [<remove_ $ty:snake>](&mut self, handle: $handle) -> Option<$ty> {
+                self.$field.remove(handle)
+            }
+        }
+    };
+}
+
+impl Resources {
+    resource_methods!(Texture, TextureHandle, textures);
+    resource_methods!(Material, MaterialHandle, materials);
+    resource_methods!(Geometry, GeometryHandle, geometries);
+    resource_methods!(VertexBuffer, VertexBufferHandle, vertex_buffers);
 }
 
 #[cfg(test)]
@@ -166,7 +108,7 @@ mod tests {
     #[test]
     fn test_texture_pool() {
         let mut world = Resources::default();
-        let texture = Texture::new().with_format(TextureFormat::Rgba8UnormSrgb);
+        let texture = Texture::default().with_format(TextureFormat::Rgba8UnormSrgb);
         let handle = world.insert_texture(texture);
 
         let retrieved = world.get_texture(handle).unwrap();

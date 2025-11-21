@@ -23,7 +23,7 @@ impl Targets {
         resources: &crate::Resources,
     ) -> wgpu::RenderPass<'a> {
         let views: Vec<wgpu::TextureView> = target
-            .color_attachments
+            .color_attachments()
             .iter()
             .map(|color_attachment| {
                 let texture_handle = color_attachment.texture;
@@ -45,7 +45,7 @@ impl Targets {
             .collect();
 
         let color_attachments = target
-            .color_attachments
+            .color_attachments()
             .iter()
             .zip(views.iter())
             .map(|(color_attachment, view)| {
@@ -72,7 +72,7 @@ impl Targets {
             })
             .collect::<Vec<_>>();
 
-        let depth_stencil_attachment = match &target.depth_stencil_attachment {
+        let depth_stencil_attachment = match &target.depth_stencil_attachment() {
             Some(depth_stencil_attachment) => {
                 let texture_handle = depth_stencil_attachment.texture;
                 let texture = resources.get_texture(texture_handle).unwrap();
@@ -109,7 +109,7 @@ impl Targets {
         };
 
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some(target.name.as_str()),
+            label: Some(target.name()),
             color_attachments: &color_attachments,
             depth_stencil_attachment,
             ..Default::default()

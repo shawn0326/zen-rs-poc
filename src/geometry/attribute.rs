@@ -1,38 +1,5 @@
 use crate::VertexBufferHandle;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AttributeKey {
-    Positions,
-    Normals,
-    TexCoords,
-    Colors,
-    Custom(String),
-}
-
-impl From<&str> for AttributeKey {
-    fn from(s: &str) -> Self {
-        match s {
-            "positions" => AttributeKey::Positions,
-            "normals" => AttributeKey::Normals,
-            "texcoords" => AttributeKey::TexCoords,
-            "colors" => AttributeKey::Colors,
-            other => AttributeKey::Custom(other.to_owned()),
-        }
-    }
-}
-
-impl ToString for AttributeKey {
-    fn to_string(&self) -> String {
-        match self {
-            AttributeKey::Positions => "positions".into(),
-            AttributeKey::Normals => "normals".into(),
-            AttributeKey::TexCoords => "texcoords".into(),
-            AttributeKey::Colors => "colors".into(),
-            AttributeKey::Custom(s) => s.clone(),
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct Attribute {
     buffer: VertexBufferHandle,

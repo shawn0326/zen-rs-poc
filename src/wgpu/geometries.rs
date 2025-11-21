@@ -1,7 +1,4 @@
-use crate::{
-    GeometryHandle, Resources,
-    geometry::{AttributeKey, Geometry},
-};
+use crate::{GeometryHandle, Resources, geometry::Geometry};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
@@ -49,13 +46,13 @@ pub(super) struct GpuGeometry {
 impl GpuGeometry {
     pub fn new(device: &wgpu::Device, geometry: &Geometry, resources: &Resources) -> Self {
         let positions = geometry
-            .get_attribute(AttributeKey::Positions)
+            .get_attribute(symbol!("positions"))
             .expect("Geometry must have positions");
         let tex_coords = geometry
-            .get_attribute(AttributeKey::TexCoords)
+            .get_attribute(symbol!("tex_coords"))
             .expect("Geometry must have texture coordinates");
         let colors = geometry
-            .get_attribute(AttributeKey::Colors)
+            .get_attribute(symbol!("colors"))
             .expect("Geometry must have colors");
         let indices = geometry.indices().expect("Geometry must have indices");
 

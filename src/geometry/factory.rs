@@ -1,4 +1,4 @@
-use super::{Attribute, AttributeKey, Geometry, VertexBuffer};
+use super::{Attribute, Geometry, VertexBuffer};
 
 impl Geometry {
     pub fn create_unit_quad(resources: &mut crate::Resources) -> Geometry {
@@ -25,9 +25,9 @@ impl Geometry {
         let colors = Attribute::from_buffer(colors_buffer).with_components(3);
 
         Self::new()
-            .with_attribute(AttributeKey::Positions, positions)
-            .with_attribute(AttributeKey::TexCoords, tex_coords)
-            .with_attribute(AttributeKey::Colors, colors)
+            .with_attribute(symbol!("positions"), positions)
+            .with_attribute(symbol!("tex_coords"), tex_coords)
+            .with_attribute(symbol!("colors"), colors)
             .with_indices(vec![0, 1, 2, 2, 3, 0])
     }
 
@@ -86,9 +86,9 @@ impl Geometry {
         let colors_attr = Attribute::from_buffer(colors_buffer).with_components(3);
 
         Self::new()
-            .with_attribute(AttributeKey::Positions, positions_attr)
-            .with_attribute(AttributeKey::TexCoords, tex_coords_attr)
-            .with_attribute(AttributeKey::Colors, colors_attr)
+            .with_attribute(symbol!("positions"), positions_attr)
+            .with_attribute(symbol!("tex_coords"), tex_coords_attr)
+            .with_attribute(symbol!("colors"), colors_attr)
             .with_indices(indices)
     }
 }
