@@ -1,8 +1,4 @@
-use crate::{
-    geometry::{Geometry, VertexBuffer},
-    material::Material,
-    texture::Texture,
-};
+use crate::{buffer::Buffer, geometry::Geometry, material::Material, texture::Texture};
 use slotmap::{Key, SlotMap, new_key_type};
 
 pub struct Pool<K: Key, V> {
@@ -41,13 +37,13 @@ impl<K: Key, V> Pool<K, V> {
 new_key_type! { pub struct TextureHandle; }
 new_key_type! { pub struct MaterialHandle; }
 new_key_type! { pub struct GeometryHandle; }
-new_key_type! { pub struct VertexBufferHandle; }
+new_key_type! { pub struct BufferHandle; }
 
 pub struct Resources {
     textures: Pool<TextureHandle, Texture>,
     materials: Pool<MaterialHandle, Material>,
     geometries: Pool<GeometryHandle, Geometry>,
-    vertex_buffers: Pool<VertexBufferHandle, VertexBuffer>,
+    buffers: Pool<BufferHandle, Buffer>,
 }
 
 impl Default for Resources {
@@ -56,7 +52,7 @@ impl Default for Resources {
             textures: Pool::new(32),
             materials: Pool::new(32),
             geometries: Pool::new(32),
-            vertex_buffers: Pool::new(32),
+            buffers: Pool::new(32),
         }
     }
 }
@@ -91,7 +87,7 @@ impl Resources {
     resource_methods!(Texture, TextureHandle, textures);
     resource_methods!(Material, MaterialHandle, materials);
     resource_methods!(Geometry, GeometryHandle, geometries);
-    resource_methods!(VertexBuffer, VertexBufferHandle, vertex_buffers);
+    resource_methods!(Buffer, BufferHandle, buffers);
 }
 
 #[cfg(test)]
