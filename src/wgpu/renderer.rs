@@ -6,9 +6,7 @@ use super::{
     targets::Targets,
     textures::Textures,
 };
-use crate::{
-    GeometryHandle, MaterialHandle, camera::Camera, primitive::Primitive, target::RenderTarget,
-};
+use crate::{ResourceKey, Resources, camera::Camera, primitive::Primitive, target::RenderTarget};
 
 pub struct Renderer<'surf> {
     adapter: wgpu::Adapter,
@@ -115,20 +113,20 @@ impl<'surf> Renderer<'surf> {
             let mut batch_start = 0u32;
             let mut indices = 0..0;
 
-            let mut current_material_handle: Option<MaterialHandle> = None;
-            let mut current_geometry_handle: Option<GeometryHandle> = None;
+            let mut current_material_handle: Option<ResourceKey> = None;
+            let mut current_geometry_handle: Option<ResourceKey> = None;
 
             for (i, primitive) in primitives.iter().enumerate() {
                 let geometry_handle = primitive.geometry();
                 let material_handle = primitive.material();
 
                 let material_changed = match current_material_handle {
-                    Some(handle) => handle != material_handle,
+                    Some(handle) => handle != material_handle.raw(),
                     None => true,
                 };
 
                 let geometry_changed = match current_geometry_handle {
-                    Some(handle) => handle != geometry_handle,
+                    Some(handle) => handle != geometry_handle.raw(),
                     None => true,
                 };
 
@@ -173,8 +171,8 @@ impl<'surf> Renderer<'surf> {
                         gpu_geometry.set_buffers_to_render_pass(&mut render_pass);
                     }
 
-                    current_material_handle = Some(material_handle);
-                    current_geometry_handle = Some(geometry_handle);
+                    current_material_handle = Some(material_handle.raw());
+                    current_geometry_handle = Some(geometry_handle.raw());
 
                     batch_start = i as u32;
                     indices = 0..gpu_geometry.num_indices;
@@ -195,5 +193,47 @@ impl<'surf> Renderer<'surf> {
         self.queue.submit(Some(encoder.finish()));
 
         surface_textures.present();
+    }
+
+    pub fn destroy_texture_gpu(&mut self, _: ResourceKey) {
+        // todo: implement
+    }
+
+    pub fn destroy_material_gpu(&mut self, _: ResourceKey) {
+        // todo: implement
+    }
+
+    pub fn destroy_geometry_gpu(&mut self, _: ResourceKey) {
+        // todo: implement
+    }
+
+    pub fn destroy_vertex_buffer_gpu(&mut self, _: ResourceKey) {
+        // todo: implement
+    }
+
+    pub fn destroy_garbage_gpu(&mut self, resources: &Resources) {
+        if resources.textures.free_len() > 0 {
+            resources.textures.for_each_free(|key| {
+                self.destroy_texture_gpu(key);
+            });
+        }
+
+        if resources.materials.free_len() > 0 {
+            resources.materials.for_each_free(|key| {
+                self.destroy_material_gpu(key);
+            });
+        }
+
+        if resources.geometries.free_len() > 0 {
+            resources.geometries.for_each_free(|key| {
+                self.destroy_geometry_gpu(key);
+            });
+        }
+
+        if resources.vertex_buffers.free_len() > 0 {
+            resources.vertex_buffers.for_each_free(|key| {
+                self.destroy_vertex_buffer_gpu(key);
+            });
+        }
     }
 }

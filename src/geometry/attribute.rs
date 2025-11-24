@@ -36,8 +36,8 @@ impl Attribute {
         self
     }
 
-    pub fn buffer(&self) -> VertexBufferHandle {
-        self.buffer
+    pub fn buffer(&self) -> &VertexBufferHandle {
+        &self.buffer
     }
 
     pub fn set_offset(&mut self, offset: u8) -> &mut Self {

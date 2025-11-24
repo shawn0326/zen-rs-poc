@@ -1,9 +1,9 @@
-use crate::{GeometryHandle, Resources, geometry::Geometry};
+use crate::{GeometryHandle, ResourceKey, Resources, geometry::Geometry};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
 pub(super) struct Geometries {
-    map: HashMap<GeometryHandle, GpuGeometry>,
+    map: HashMap<ResourceKey, GpuGeometry>,
 }
 
 impl Geometries {
@@ -17,13 +17,13 @@ impl Geometries {
         &mut self,
         device: &wgpu::Device,
         resources: &Resources,
-        geometry_handle: GeometryHandle,
+        geometry_handle: &GeometryHandle,
     ) -> &GpuGeometry {
         let geometry = resources
             .get_geometry(geometry_handle)
             .expect("GeometryHandle is invalid");
 
-        self.map.entry(geometry_handle).or_insert_with(|| {
+        self.map.entry(geometry_handle.raw()).or_insert_with(|| {
             println!(
                 "Creating GPU geometry for GeometryHandle {:?}",
                 geometry_handle

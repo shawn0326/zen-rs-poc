@@ -36,8 +36,8 @@ impl Primitive {
     }
 
     #[inline]
-    pub fn geometry(&self) -> GeometryHandle {
-        self.geometry
+    pub fn geometry(&self) -> &GeometryHandle {
+        &self.geometry
     }
 
     #[inline]
@@ -47,7 +47,7 @@ impl Primitive {
     }
 
     #[inline]
-    pub fn material(&self) -> MaterialHandle {
-        self.material
+    pub fn material(&self) -> &MaterialHandle {
+        &self.material
     }
 }

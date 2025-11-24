@@ -12,7 +12,7 @@ use crate::TextureHandle;
 /// - `UniformBuffer`: raw bytes sized by the layout computed in the builder
 /// - `Texture`: an optional texture handle (`None` means unbound)
 #[derive(Clone)]
-pub(crate) enum MaterialBindingData {
+pub enum MaterialBindingData {
     /// Raw bytes that back a uniform-buffer binding.
     /// The length equals the total size computed by the layout.
     UniformBuffer(Box<[u8]>),
@@ -28,7 +28,7 @@ impl MaterialBindingData {
     /// Panics
     /// - If this binding is not `UniformBuffer`.
     #[inline(always)]
-    pub(crate) fn expect_uniform_buffer(&self) -> &[u8] {
+    pub fn expect_uniform_buffer(&self) -> &[u8] {
         match self {
             MaterialBindingData::UniformBuffer(b) => &b[..],
             _ => panic!("expected UniformBuffer at index"),
@@ -40,7 +40,7 @@ impl MaterialBindingData {
     /// Panics
     /// - If this binding is not `UniformBuffer`.
     #[inline(always)]
-    pub(crate) fn expect_uniform_buffer_mut(&mut self) -> &mut [u8] {
+    pub fn expect_uniform_buffer_mut(&mut self) -> &mut [u8] {
         match self {
             MaterialBindingData::UniformBuffer(b) => &mut b[..],
             _ => panic!("expected UniformBuffer at index"),
@@ -52,7 +52,7 @@ impl MaterialBindingData {
     /// Panics
     /// - If this binding is not `Texture`.
     #[inline(always)]
-    pub(crate) fn expect_texture(&self) -> &Option<TextureHandle> {
+    pub fn expect_texture(&self) -> &Option<TextureHandle> {
         match self {
             MaterialBindingData::Texture(t) => t,
             _ => panic!("expected Texture at index"),

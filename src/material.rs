@@ -13,9 +13,9 @@ mod binding_data;
 pub(crate) use binding_data::*;
 
 use crate::Symbol;
-use crate::TextureHandle;
 use crate::math::*;
 use crate::shader::*;
+use crate::{Resource, TextureHandle};
 
 /// Builds binding storage for a given shader:
 /// - Uniform buffers are allocated with zeroed bytes sized by `total_size`.
@@ -75,6 +75,8 @@ pub struct Material {
     bindings: Box<[MaterialBindingData]>,
 }
 
+impl Resource for Material {}
+
 impl Material {
     /// Constructs a new material from a shader handle.
     ///
@@ -91,7 +93,9 @@ impl Material {
     pub fn from_shader(shader: ShaderRc) -> Self {
         Self::new(shader)
     }
+}
 
+impl Material {
     /// Returns the underlying shader handle.
     #[inline]
     pub fn shader(&self) -> &ShaderRc {
@@ -192,9 +196,9 @@ impl Material {
 
     /// Returns the texture handle stored at the binding (if any).
     #[inline]
-    pub fn get_param_t(&self, key: Symbol) -> &Option<TextureHandle> {
+    pub fn get_param_t(&self, key: Symbol) -> Option<&TextureHandle> {
         let meta = self.shader.texture_meta(key).expect("unknown texture key");
-        self.bindings[meta.index].expect_texture()
+        self.bindings[meta.index].expect_texture().as_ref()
     }
 }
 

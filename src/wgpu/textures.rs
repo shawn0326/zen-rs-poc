@@ -1,10 +1,10 @@
-use crate::TextureHandle;
 use crate::texture::{Texture, TextureFormat, TextureSource};
+use crate::{ResourceKey, TextureHandle};
 use slotmap::SecondaryMap;
 
 pub(super) struct Textures {
     default_gpu_texture: GpuTexture,
-    pool: SecondaryMap<TextureHandle, GpuTexture>,
+    pool: SecondaryMap<ResourceKey, GpuTexture>,
 }
 
 impl Textures {
@@ -28,7 +28,7 @@ impl Textures {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture: &Texture,
-        texture_handle: TextureHandle,
+        texture_handle: &TextureHandle,
     ) -> &GpuTexture {
         match texture.source() {
             TextureSource::D2 {
@@ -42,20 +42,20 @@ impl Textures {
                     gpu_texture
                 };
 
-                match self.pool.entry(texture_handle) {
+                match self.pool.entry(texture_handle.raw()) {
                     Some(entry) => entry.or_insert_with(create_gpu_texture),
                     None => panic!("Texture source is Render, but has been removed from pool."),
                 }
             }
             TextureSource::Render { width, height } => {
-                if let Some(existing) = self.pool.get(texture_handle) {
+                if let Some(existing) = self.pool.get(texture_handle.raw()) {
                     let desc_size = existing.descriptor.size;
                     if desc_size.width != *width || desc_size.height != *height {
-                        self.pool.remove(texture_handle);
+                        self.pool.remove(texture_handle.raw());
                     }
                 }
 
-                match self.pool.entry(texture_handle) {
+                match self.pool.entry(texture_handle.raw()) {
                     Some(entry) => entry.or_insert_with(|| {
                         GpuTexture::new(device, (*width, *height), texture.format())
                     }),
@@ -66,8 +66,8 @@ impl Textures {
         }
     }
 
-    pub fn get_gpu_texture_by_id(&self, texture_handle: TextureHandle) -> Option<&GpuTexture> {
-        self.pool.get(texture_handle)
+    pub fn get_gpu_texture_by_id(&self, texture_handle: &TextureHandle) -> Option<&GpuTexture> {
+        self.pool.get(texture_handle.raw())
     }
 }
 

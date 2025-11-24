@@ -1,4 +1,4 @@
-use crate::{Resources, VertexBufferHandle};
+use crate::{Resource, Resources, VertexBufferHandle};
 use std::{cell::RefCell, rc::Rc};
 
 pub type VertexBufferRef = Rc<RefCell<VertexBuffer>>;
@@ -7,6 +7,8 @@ pub struct VertexBuffer {
     data: Vec<f32>,
     stride: u8,
 }
+
+impl Resource for VertexBuffer {}
 
 impl VertexBuffer {
     pub fn new() -> Self {

@@ -4,7 +4,7 @@ mod source;
 pub use format::TextureFormat;
 pub use source::TextureSource;
 
-use crate::{Resources, TextureHandle};
+use crate::{Resource, Resources, TextureHandle};
 
 /// Represents a CPU-side texture resource.
 ///
@@ -20,6 +20,8 @@ pub struct Texture {
     source: TextureSource,
     format: TextureFormat,
 }
+
+impl Resource for Texture {}
 
 impl Default for Texture {
     fn default() -> Self {

@@ -59,7 +59,7 @@ impl<'surf> Surfaces<'surf> {
         let mut surface_textures = ActiveSurfaceTextures(HashMap::new());
 
         for color_attachment in target.color_attachments().iter() {
-            let texture_handle = color_attachment.texture;
+            let texture_handle = &color_attachment.texture;
             let texture = resources.get_texture(texture_handle).unwrap();
             if let TextureSource::Surface { surface_id, .. } = texture.source() {
                 let (width, height) = target.size();

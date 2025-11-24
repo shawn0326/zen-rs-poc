@@ -53,7 +53,7 @@ impl RenderTarget {
 
         if let Some(depth_stencil_attachment) = &self.depth_stencil_attachment {
             resources
-                .get_texture_mut(depth_stencil_attachment.texture)
+                .get_texture_mut(&depth_stencil_attachment.texture)
                 .unwrap()
                 .set_source(TextureSource::Render {
                     width: new_width,

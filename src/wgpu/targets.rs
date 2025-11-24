@@ -26,7 +26,7 @@ impl Targets {
             .color_attachments()
             .iter()
             .map(|color_attachment| {
-                let texture_handle = color_attachment.texture;
+                let texture_handle = &color_attachment.texture;
                 let texture = resources.get_texture(texture_handle).unwrap();
 
                 let gpu_texture = match texture.source() {
@@ -74,7 +74,7 @@ impl Targets {
 
         let depth_stencil_attachment = match &target.depth_stencil_attachment() {
             Some(depth_stencil_attachment) => {
-                let texture_handle = depth_stencil_attachment.texture;
+                let texture_handle = &depth_stencil_attachment.texture;
                 let texture = resources.get_texture(texture_handle).unwrap();
                 let gpu_texture =
                     textures.get_gpu_texture(device, queue, &*texture, texture_handle);

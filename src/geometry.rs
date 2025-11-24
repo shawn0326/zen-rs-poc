@@ -5,13 +5,15 @@ mod vertex_buffer;
 pub use attribute::Attribute;
 pub use vertex_buffer::{VertexBuffer, VertexBufferRef};
 
-use crate::{GeometryHandle, Resources, Symbol};
+use crate::{GeometryHandle, Resource, Resources, Symbol};
 use std::collections::HashMap;
 
 pub struct Geometry {
     attributes: HashMap<Symbol, Attribute>,
     indices: Option<Vec<u32>>,
 }
+
+impl Resource for Geometry {}
 
 impl Geometry {
     pub fn new() -> Self {

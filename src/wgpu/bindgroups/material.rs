@@ -41,8 +41,8 @@ impl GpuMaterialBindGroup {
                             textures.get_gpu_texture(
                                 device,
                                 queue,
-                                resources.get_texture(*texture_handle).unwrap(),
-                                *texture_handle,
+                                resources.get_texture(texture_handle).unwrap(),
+                                texture_handle,
                             );
                         }
                     }
@@ -94,7 +94,7 @@ impl GpuMaterialBindGroup {
 
                     let gpu_texture;
                     if let Some(texture_handle) = material.bindings()[index].expect_texture() {
-                        gpu_texture = textures.get_gpu_texture_by_id(*texture_handle).unwrap();
+                        gpu_texture = textures.get_gpu_texture_by_id(texture_handle).unwrap();
                     } else {
                         gpu_texture = textures.get_default_gpu_texture();
                     }

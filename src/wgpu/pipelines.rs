@@ -1,9 +1,9 @@
-use crate::MaterialHandle;
+use crate::{MaterialHandle, ResourceKey};
 use std::collections::HashMap;
 
 pub(super) struct Pipelines {
     format: wgpu::TextureFormat,
-    map: HashMap<MaterialHandle, wgpu::RenderPipeline>,
+    map: HashMap<ResourceKey, wgpu::RenderPipeline>,
 }
 
 impl Pipelines {
@@ -17,12 +17,12 @@ impl Pipelines {
     pub fn set_pipeline(
         &mut self,
         device: &wgpu::Device,
-        material_handle: MaterialHandle,
+        material_handle: &MaterialHandle,
         vertex_buffer_layout: &[wgpu::VertexBufferLayout],
         bindgroup_layout: &[&wgpu::BindGroupLayout],
         resources: &crate::Resources,
     ) -> &wgpu::RenderPipeline {
-        match self.map.entry(material_handle) {
+        match self.map.entry(material_handle.raw()) {
             std::collections::hash_map::Entry::Occupied(o) => o.into_mut(),
             std::collections::hash_map::Entry::Vacant(v) => {
                 let material = resources.get_material(material_handle).unwrap();

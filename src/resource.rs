@@ -1,62 +1,34 @@
+mod pool;
+
 use crate::{
     geometry::{Geometry, VertexBuffer},
     material::Material,
     texture::Texture,
 };
-use slotmap::{Key, SlotMap, new_key_type};
+use pool::{ResourceHandle, ResourcePool};
 
-pub struct Pool<K: Key, V> {
-    inner: SlotMap<K, V>,
-}
+pub(crate) use pool::{Resource, ResourceKey};
 
-impl<K: Key, V> Pool<K, V> {
-    #[inline]
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            inner: SlotMap::with_capacity_and_key(capacity),
-        }
-    }
+pub type TextureHandle = ResourceHandle<Texture>;
+pub type MaterialHandle = ResourceHandle<Material>;
+pub type GeometryHandle = ResourceHandle<Geometry>;
+pub type VertexBufferHandle = ResourceHandle<VertexBuffer>;
 
-    #[inline]
-    pub fn insert(&mut self, value: V) -> K {
-        self.inner.insert(value)
-    }
-
-    #[inline]
-    pub fn get(&self, key: K) -> Option<&V> {
-        self.inner.get(key)
-    }
-
-    #[inline]
-    pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
-        self.inner.get_mut(key)
-    }
-
-    #[inline]
-    pub fn remove(&mut self, key: K) -> Option<V> {
-        self.inner.remove(key)
-    }
-}
-
-new_key_type! { pub struct TextureHandle; }
-new_key_type! { pub struct MaterialHandle; }
-new_key_type! { pub struct GeometryHandle; }
-new_key_type! { pub struct VertexBufferHandle; }
-
+#[derive(Debug, Default)]
 pub struct Resources {
-    textures: Pool<TextureHandle, Texture>,
-    materials: Pool<MaterialHandle, Material>,
-    geometries: Pool<GeometryHandle, Geometry>,
-    vertex_buffers: Pool<VertexBufferHandle, VertexBuffer>,
+    pub(crate) textures: ResourcePool<Texture>,
+    pub(crate) materials: ResourcePool<Material>,
+    pub(crate) geometries: ResourcePool<Geometry>,
+    pub(crate) vertex_buffers: ResourcePool<VertexBuffer>,
 }
 
-impl Default for Resources {
-    fn default() -> Self {
+impl Resources {
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            textures: Pool::new(32),
-            materials: Pool::new(32),
-            geometries: Pool::new(32),
-            vertex_buffers: Pool::new(32),
+            textures: ResourcePool::with_capacity(capacity),
+            materials: ResourcePool::with_capacity(capacity),
+            geometries: ResourcePool::with_capacity(capacity),
+            vertex_buffers: ResourcePool::with_capacity(capacity),
         }
     }
 }
@@ -70,18 +42,28 @@ macro_rules! resource_methods {
             }
 
             #[inline]
-            pub fn [<get_ $ty:snake>](&self, handle: $handle) -> Option<&$ty> {
+            pub fn [<get_ $ty:snake>](&self, handle: &$handle) -> Option<&$ty> {
                 self.$field.get(handle)
             }
 
             #[inline]
-            pub fn [<get_ $ty:snake _mut>](&mut self, handle: $handle) -> Option<&mut $ty> {
+            pub fn [<get_ $ty:snake _mut>](&mut self, handle: &$handle) -> Option<&mut $ty> {
                 self.$field.get_mut(handle)
             }
 
             #[inline]
             pub fn [<remove_ $ty:snake>](&mut self, handle: $handle) -> Option<$ty> {
                 self.$field.remove(handle)
+            }
+
+            #[inline]
+            pub fn [<$ty:snake _len>](&self) -> usize {
+                self.$field.len()
+            }
+
+            #[inline]
+            pub fn [<$ty:snake _free_len>](&self) -> usize {
+                self.$field.free_len()
             }
         }
     };
@@ -94,28 +76,41 @@ impl Resources {
     resource_methods!(VertexBuffer, VertexBufferHandle, vertex_buffers);
 }
 
+impl Resources {
+    pub fn collect_garbage(&mut self) {
+        if self.textures.free_len() > 0 {
+            self.textures.collect_garbage();
+        }
+        if self.materials.free_len() > 0 {
+            self.materials.collect_garbage();
+        }
+        if self.geometries.free_len() > 0 {
+            self.geometries.collect_garbage();
+        }
+        if self.vertex_buffers.free_len() > 0 {
+            self.vertex_buffers.collect_garbage();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Resources;
     use crate::texture::*;
 
     #[test]
-    fn test_pool_cpacity() {
-        let pool: super::Pool<super::TextureHandle, u32> = super::Pool::new(128);
-        assert_eq!(pool.inner.capacity(), 128);
-    }
-
-    #[test]
     fn test_texture_pool() {
-        let mut world = Resources::default();
+        let mut resources = Resources::default();
         let texture = Texture::default().with_format(TextureFormat::Rgba8UnormSrgb);
-        let handle = world.insert_texture(texture);
+        let handle = resources.insert_texture(texture);
 
-        let retrieved = world.get_texture(handle).unwrap();
+        let retrieved = resources.get_texture(&handle).unwrap();
         assert_eq!(retrieved.format(), TextureFormat::Rgba8UnormSrgb);
 
-        let removed = world.remove_texture(handle);
+        let removed = resources.remove_texture(handle);
+
         assert!(removed.is_some());
-        assert!(world.textures.get(handle).is_none());
+        assert!(resources.textures.len() == 0);
+        assert!(resources.textures.free_len() == 1);
     }
 }

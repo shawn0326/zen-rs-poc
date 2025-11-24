@@ -151,14 +151,14 @@ impl<'window> App<'window> {
 
         for i in 0..count {
             let geometry_handle = if i % 2 == 0 {
-                geometry1_handle
+                geometry1_handle.clone()
             } else {
-                geometry2_handle
+                geometry2_handle.clone()
             };
             let material_handle = if i % 3 == 0 {
-                material1_handle
+                material1_handle.clone()
             } else {
-                material2_handle
+                material2_handle.clone()
             };
 
             let position = Vec3::new(
@@ -188,12 +188,16 @@ impl<'window> App<'window> {
 
     pub fn render(&mut self) {
         self.primitives
-            .sort_by_key(|item| (item.material(), item.geometry()));
+            .sort_by_key(|item| (item.material().raw(), item.geometry().raw()));
+
         self.renderer.render(
             &self.primitives,
             &self.camera.inner,
             &self.screen_render_target,
             &mut self.resources,
         );
+
+        // self.renderer.destroy_garbage_gpu(&self.resources);
+        // self.resources.collect_garbage();
     }
 }
