@@ -1,59 +1,33 @@
 use super::{Attribute, Geometry, VertexBuffer};
-use crate::{buffer::Buffer, symbol};
 
 impl Geometry {
     pub fn create_unit_quad(resources: &mut crate::Resources) -> Geometry {
-        let buffer = Buffer {
-            data: vec![
+        let positions_buffer = VertexBuffer::new()
+            .with_data(vec![
                 -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
-            ],
-        };
-        let len = buffer.len();
+            ])
+            .with_stride(3)
+            .into_handle(resources);
+        let positions = Attribute::from_buffer(positions_buffer).with_components(3);
 
-        let positions_attr = Attribute {
-            vertex_buffer: VertexBuffer {
-                buffer: buffer.into_handle(resources),
-                stride: 3,
-                len,
-            },
-            offset: 0,
-            component: 3,
-        };
+        let tex_coords_buffer = VertexBuffer::new()
+            .with_data(vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0])
+            .with_stride(2)
+            .into_handle(resources);
+        let tex_coords = Attribute::from_buffer(tex_coords_buffer).with_components(2);
 
-        let buffer = Buffer {
-            data: vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
-        };
-        let len = buffer.len();
-
-        let tex_coords_attr = Attribute {
-            vertex_buffer: VertexBuffer {
-                buffer: buffer.into_handle(resources),
-                stride: 2,
-                len,
-            },
-            offset: 0,
-            component: 2,
-        };
-
-        let buffer = Buffer {
-            data: vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-        };
-        let len = buffer.len();
-
-        let colors_attr = Attribute {
-            vertex_buffer: VertexBuffer {
-                buffer: buffer.into_handle(resources),
-                stride: 3,
-                len,
-            },
-            offset: 0,
-            component: 3,
-        };
+        let colors_buffer = VertexBuffer::new()
+            .with_data(vec![
+                1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+            ])
+            .with_stride(3)
+            .into_handle(resources);
+        let colors = Attribute::from_buffer(colors_buffer).with_components(3);
 
         Self::new()
-            .with_attribute(symbol!("positions"), positions_attr)
-            .with_attribute(symbol!("tex_coords"), tex_coords_attr)
-            .with_attribute(symbol!("colors"), colors_attr)
+            .with_attribute(symbol!("positions"), positions)
+            .with_attribute(symbol!("tex_coords"), tex_coords)
+            .with_attribute(symbol!("colors"), colors)
             .with_indices(vec![0, 1, 2, 2, 3, 0])
     }
 
@@ -94,44 +68,22 @@ impl Geometry {
             indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
         }
 
-        let buffer = Buffer { data: positions };
-        let len = buffer.len();
+        let positions_buffer = VertexBuffer::new()
+            .with_data(positions)
+            .with_stride(3)
+            .into_handle(resources);
+        let tex_coords_buffer = VertexBuffer::new()
+            .with_data(tex_coords)
+            .with_stride(2)
+            .into_handle(resources);
+        let colors_buffer = VertexBuffer::new()
+            .with_data(colors)
+            .with_stride(3)
+            .into_handle(resources);
 
-        let positions_attr = Attribute {
-            vertex_buffer: VertexBuffer {
-                buffer: buffer.into_handle(resources),
-                stride: 3,
-                len,
-            },
-            offset: 0,
-            component: 3,
-        };
-
-        let buffer = Buffer { data: tex_coords };
-        let len = buffer.len();
-
-        let tex_coords_attr = Attribute {
-            vertex_buffer: VertexBuffer {
-                buffer: buffer.into_handle(resources),
-                stride: 2,
-                len,
-            },
-            offset: 0,
-            component: 2,
-        };
-
-        let buffer = Buffer { data: colors };
-        let len = buffer.len();
-
-        let colors_attr = Attribute {
-            vertex_buffer: VertexBuffer {
-                buffer: buffer.into_handle(resources),
-                stride: 3,
-                len,
-            },
-            offset: 0,
-            component: 3,
-        };
+        let positions_attr = Attribute::from_buffer(positions_buffer).with_components(3);
+        let tex_coords_attr = Attribute::from_buffer(tex_coords_buffer).with_components(2);
+        let colors_attr = Attribute::from_buffer(colors_buffer).with_components(3);
 
         Self::new()
             .with_attribute(symbol!("positions"), positions_attr)

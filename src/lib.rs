@@ -20,7 +20,6 @@ macro_rules! symbol {
     ($s:expr) => {{ $crate::Symbol($crate::fnv1a64($s.as_bytes())) }};
 }
 
-pub mod buffer;
 pub mod camera;
 pub mod geometry;
 pub mod material;

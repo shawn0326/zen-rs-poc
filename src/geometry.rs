@@ -3,7 +3,7 @@ mod factory;
 mod vertex_buffer;
 
 pub use attribute::Attribute;
-pub use vertex_buffer::VertexBuffer;
+pub use vertex_buffer::{VertexBuffer, VertexBufferRef};
 
 use crate::{GeometryHandle, Resources, Symbol};
 use std::collections::HashMap;

@@ -60,10 +60,9 @@ impl GpuGeometry {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(
                 resources
-                    .get_buffer(positions.vertex_buffer.buffer)
+                    .get_vertex_buffer(positions.buffer())
                     .unwrap()
-                    .data
-                    .as_ref(),
+                    .data(),
             ),
             usage: wgpu::BufferUsages::VERTEX,
         });
@@ -71,21 +70,16 @@ impl GpuGeometry {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(
                 resources
-                    .get_buffer(tex_coords.vertex_buffer.buffer)
+                    .get_vertex_buffer(tex_coords.buffer())
                     .unwrap()
-                    .data
-                    .as_ref(),
+                    .data(),
             ),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let colors_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(
-                resources
-                    .get_buffer(colors.vertex_buffer.buffer)
-                    .unwrap()
-                    .data
-                    .as_ref(),
+                resources.get_vertex_buffer(colors.buffer()).unwrap().data(),
             ),
             usage: wgpu::BufferUsages::VERTEX,
         });
@@ -102,7 +96,7 @@ impl GpuGeometry {
                 array_stride: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: vec![wgpu::VertexAttribute {
-                    offset: positions.offset,
+                    offset: positions.offset() as wgpu::BufferAddress,
                     shader_location: 0,
                     format: wgpu::VertexFormat::Float32x3,
                 }],
@@ -112,7 +106,7 @@ impl GpuGeometry {
                 array_stride: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: vec![wgpu::VertexAttribute {
-                    offset: tex_coords.offset,
+                    offset: 0,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x2,
                 }],
@@ -122,7 +116,7 @@ impl GpuGeometry {
                 array_stride: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: vec![wgpu::VertexAttribute {
-                    offset: colors.offset,
+                    offset: 0,
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float32x3,
                 }],
