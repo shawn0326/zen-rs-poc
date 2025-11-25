@@ -138,7 +138,7 @@ impl<'surf> Renderer<'surf> {
 
                     let gpu_geometry =
                         self.geometries
-                            .get_gpu_geometry(&self.device, resources, geometry_handle);
+                            .prepare(&self.device, resources, geometry_handle);
 
                     let gpu_material_bind_group =
                         self.material_bind_groups.get_material_bind_group(
@@ -152,7 +152,7 @@ impl<'surf> Renderer<'surf> {
                     let pipeline = self.pipelines.set_pipeline(
                         &self.device,
                         material_handle,
-                        &gpu_geometry.vertex_buffer_layouts(),
+                        &gpu_geometry,
                         &[
                             global_bind_group.gpu_layout(),
                             primitive_bind_group.gpu_layout(),

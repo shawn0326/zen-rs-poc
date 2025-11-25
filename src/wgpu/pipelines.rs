@@ -1,4 +1,4 @@
-use crate::{MaterialHandle, ResourceKey};
+use crate::{MaterialHandle, ResourceKey, wgpu::geometries::GpuGeometry};
 use std::collections::HashMap;
 
 pub(super) struct Pipelines {
@@ -18,7 +18,7 @@ impl Pipelines {
         &mut self,
         device: &wgpu::Device,
         material_handle: &MaterialHandle,
-        vertex_buffer_layout: &[wgpu::VertexBufferLayout],
+        gpu_geometry: &GpuGeometry,
         bindgroup_layout: &[&wgpu::BindGroupLayout],
         resources: &crate::Resources,
     ) -> &wgpu::RenderPipeline {
@@ -48,7 +48,7 @@ impl Pipelines {
                         module: &shader,
                         compilation_options: Default::default(),
                         entry_point: Some("vs_main"),
-                        buffers: vertex_buffer_layout,
+                        buffers: &gpu_geometry.vertex_buffer_layouts(),
                     },
                     fragment: Some(wgpu::FragmentState {
                         // 3.

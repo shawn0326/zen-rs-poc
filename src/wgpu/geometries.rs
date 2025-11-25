@@ -1,36 +1,44 @@
 use crate::{GeometryHandle, ResourceKey, Resources, Symbol, geometry::Geometry};
-use std::{collections::HashMap, ops::Range};
+use slotmap::SecondaryMap;
+use std::ops::Range;
 use wgpu::util::DeviceExt;
 
 pub(super) struct Geometries {
-    map: HashMap<ResourceKey, GpuGeometry>,
+    pool: SecondaryMap<ResourceKey, GpuGeometry>,
 }
 
 impl Geometries {
     pub fn new() -> Self {
         Self {
-            map: HashMap::new(),
+            pool: SecondaryMap::new(),
         }
     }
 
-    pub fn get_gpu_geometry(
+    pub fn prepare(
         &mut self,
         device: &wgpu::Device,
         resources: &Resources,
-        geometry_handle: &GeometryHandle,
+        handle: &GeometryHandle,
     ) -> &GpuGeometry {
-        let geometry = resources
-            .get_geometry(geometry_handle)
-            .expect("GeometryHandle is invalid");
+        let entry = self
+            .pool
+            .entry(handle.raw())
+            .expect("GeometryHandle has been removed from pool.");
 
-        self.map.entry(geometry_handle.raw()).or_insert_with(|| {
-            println!(
-                "Creating GPU geometry for GeometryHandle {:?}",
-                geometry_handle
-            );
-            let gpu_geometry = GpuGeometry::new(device, geometry, resources);
-            gpu_geometry
-        })
+        let geometry = resources
+            .get_geometry(handle)
+            .expect("GeometryHandle has been removed from pool.");
+
+        // todo: hot reload support
+
+        entry.or_insert_with(|| GpuGeometry::new(device, geometry, resources))
+    }
+
+    #[allow(dead_code)]
+    pub fn get_gpu_geometry(&self, geometry_handle: &GeometryHandle) -> &GpuGeometry {
+        self.pool
+            .get(geometry_handle.raw())
+            .expect("Geometry GPU lost.")
     }
 }
 
