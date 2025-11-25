@@ -1,7 +1,5 @@
-use crate::{GeometryHandle, ResourceKey, Resources, Symbol, geometry::Geometry};
+use crate::{GeometryHandle, ResourceKey};
 use slotmap::SecondaryMap;
-use std::ops::Range;
-use wgpu::util::DeviceExt;
 
 pub(super) struct Geometries {
     pool: SecondaryMap<ResourceKey, GpuGeometry>,
@@ -16,8 +14,8 @@ impl Geometries {
 
     pub fn prepare(
         &mut self,
-        device: &wgpu::Device,
-        resources: &Resources,
+        // device: &wgpu::Device,
+        // resources: &Resources,
         handle: &GeometryHandle,
     ) -> &GpuGeometry {
         let entry = self
@@ -25,13 +23,13 @@ impl Geometries {
             .entry(handle.raw())
             .expect("GeometryHandle has been removed from pool.");
 
-        let geometry = resources
-            .get_geometry(handle)
-            .expect("GeometryHandle has been removed from pool.");
+        // let geometry = resources
+        //     .get_geometry(handle)
+        //     .expect("GeometryHandle has been removed from pool.");
 
         // todo: hot reload support
 
-        entry.or_insert_with(|| GpuGeometry::new(device, geometry, resources))
+        entry.or_insert_with(|| GpuGeometry::new())
     }
 
     #[allow(dead_code)]
@@ -43,57 +41,11 @@ impl Geometries {
 }
 
 pub(super) struct GpuGeometry {
-    pub index_buffer: (wgpu::Buffer, Range<wgpu::BufferAddress>, u32),
-    pub vertex_buffers: Vec<(wgpu::Buffer, Range<wgpu::BufferAddress>)>,
     pub vertex_buffer_layouts: Vec<VertexBufferLayout>,
 }
 
 impl GpuGeometry {
-    pub fn new(device: &wgpu::Device, geometry: &Geometry, resources: &Resources) -> Self {
-        const NAMES: [Symbol; 3] = [
-            symbol!("positions"),
-            symbol!("tex_coords"),
-            symbol!("colors"),
-        ];
-
-        let mut vertex_buffers = vec![];
-
-        for name in &NAMES {
-            let attr = geometry
-                .get_attribute(*name)
-                .expect(&format!("Geometry must have attribute {:?}", name));
-
-            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: resources
-                    .get_buffer(&attr.vertex_buffer.buffer_slice.buffer)
-                    .unwrap()
-                    .raw(),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
-            vertex_buffers.push((buffer, attr.vertex_buffer.buffer_slice.range_u64()));
-        }
-
-        let index_buffer = {
-            let indices = geometry.indices().expect("Geometry must have indices");
-
-            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: resources
-                    .get_buffer(&indices.buffer_slice.buffer)
-                    .unwrap()
-                    .raw(),
-                usage: wgpu::BufferUsages::INDEX,
-            });
-
-            (
-                buffer,
-                indices.buffer_slice.range_u64(),
-                (indices.buffer_slice.size / indices.format.byte_size()) as u32,
-            )
-        };
-
+    pub fn new() -> Self {
         let vertex_buffer_layouts = vec![
             // Buffer 0: positions
             VertexBufferLayout {
@@ -128,9 +80,7 @@ impl GpuGeometry {
         ];
 
         Self {
-            vertex_buffers,
             vertex_buffer_layouts,
-            index_buffer,
         }
     }
 
@@ -139,15 +89,6 @@ impl GpuGeometry {
             .iter()
             .map(|vbl| vbl.as_wgpu_layout())
             .collect::<Vec<_>>()
-    }
-
-    pub fn set_buffers_to_render_pass(&self, render_pass: &mut wgpu::RenderPass) -> &Self {
-        for (i, (buffer, range)) in self.vertex_buffers.iter().enumerate() {
-            render_pass.set_vertex_buffer(i as u32, buffer.slice(range.clone()));
-        }
-        let (buffer, range, _) = &self.index_buffer;
-        render_pass.set_index_buffer(buffer.slice(range.clone()), wgpu::IndexFormat::Uint32);
-        self
     }
 }
 

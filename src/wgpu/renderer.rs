@@ -1,5 +1,6 @@
 use super::{
     bindgroups::{GlobalBindGroup, MaterialBindGroups, PrimitiveBindGroup},
+    buffers::Buffers,
     geometries::Geometries,
     pipelines::Pipelines,
     surfaces::Surfaces,
@@ -20,6 +21,7 @@ pub struct Renderer<'surf> {
     primitive_bind_group: PrimitiveBindGroup,
     material_bind_groups: MaterialBindGroups,
     textures: Textures,
+    buffers: Buffers,
 }
 
 impl<'surf> Renderer<'surf> {
@@ -56,6 +58,7 @@ impl<'surf> Renderer<'surf> {
         let primitive_bind_group = PrimitiveBindGroup::new(&device, 10_000);
         let material_bind_groups = MaterialBindGroups::new();
         let textures = Textures::new(&device, &queue);
+        let buffers = Buffers::new();
 
         surfaces.add_surface(surface);
 
@@ -71,6 +74,7 @@ impl<'surf> Renderer<'surf> {
             primitive_bind_group,
             material_bind_groups,
             textures,
+            buffers,
         }
     }
 
@@ -136,9 +140,7 @@ impl<'surf> Renderer<'surf> {
                         render_pass.draw_indexed(indices, 0, batch_start..(i as u32));
                     }
 
-                    let gpu_geometry =
-                        self.geometries
-                            .prepare(&self.device, resources, geometry_handle);
+                    let gpu_geometry = self.geometries.prepare(geometry_handle);
 
                     let gpu_material_bind_group =
                         self.material_bind_groups.get_material_bind_group(
@@ -168,14 +170,31 @@ impl<'surf> Renderer<'surf> {
                     }
 
                     if geometry_changed {
-                        gpu_geometry.set_buffers_to_render_pass(&mut render_pass);
+                        self.buffers.prepare_geometry_buffer(
+                            &self.device,
+                            resources,
+                            geometry_handle,
+                        );
+
+                        self.buffers.set_buffers_to_render_pass(
+                            resources,
+                            &mut render_pass,
+                            geometry_handle,
+                        );
                     }
 
                     current_material_handle = Some(material_handle.raw());
                     current_geometry_handle = Some(geometry_handle.raw());
 
                     batch_start = i as u32;
-                    indices = 0..gpu_geometry.index_buffer.2;
+
+                    if let Some(index_buffer) =
+                        resources.get_geometry(geometry_handle).unwrap().indices()
+                    {
+                        indices = 0..index_buffer.index_count();
+                    } else {
+                        indices = 0..0;
+                    }
                 }
 
                 primitive_bind_group.push_data(&primitive.transform());
@@ -207,8 +226,8 @@ impl<'surf> Renderer<'surf> {
         // todo: implement
     }
 
-    pub fn destroy_buffer_gpu(&mut self, _: ResourceKey) {
-        // todo: implement
+    pub fn destroy_buffer_gpu(&mut self, key: ResourceKey) {
+        self.buffers.destroy_inner_buffer(key);
     }
 
     pub fn destroy_garbage_gpu(&mut self, resources: &Resources) {

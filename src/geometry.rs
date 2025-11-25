@@ -24,6 +24,12 @@ pub struct IndexBuffer {
     pub format: IndexFormat,
 }
 
+impl IndexBuffer {
+    pub fn index_count(&self) -> u32 {
+        (self.buffer_slice.size / self.format.byte_size()) as u32
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Geometry {
     attributes: HashMap<Symbol, VertexAttribute>,
