@@ -1,7 +1,8 @@
 mod pool;
 
 use crate::{
-    geometry::{Geometry, VertexBuffer},
+    buffer::{Buffer, BufferSlice},
+    geometry::Geometry,
     material::Material,
     texture::Texture,
 };
@@ -12,14 +13,14 @@ pub(crate) use pool::{Resource, ResourceKey};
 pub type TextureHandle = ResourceHandle<Texture>;
 pub type MaterialHandle = ResourceHandle<Material>;
 pub type GeometryHandle = ResourceHandle<Geometry>;
-pub type VertexBufferHandle = ResourceHandle<VertexBuffer>;
+pub type BufferHandle = ResourceHandle<Buffer>;
 
 #[derive(Debug, Default)]
 pub struct Resources {
     pub(crate) textures: ResourcePool<Texture>,
     pub(crate) materials: ResourcePool<Material>,
     pub(crate) geometries: ResourcePool<Geometry>,
-    pub(crate) vertex_buffers: ResourcePool<VertexBuffer>,
+    pub(crate) buffers: ResourcePool<Buffer>,
 }
 
 impl Resources {
@@ -28,7 +29,7 @@ impl Resources {
             textures: ResourcePool::with_capacity(capacity),
             materials: ResourcePool::with_capacity(capacity),
             geometries: ResourcePool::with_capacity(capacity),
-            vertex_buffers: ResourcePool::with_capacity(capacity),
+            buffers: ResourcePool::with_capacity(capacity),
         }
     }
 }
@@ -73,7 +74,7 @@ impl Resources {
     resource_methods!(Texture, TextureHandle, textures);
     resource_methods!(Material, MaterialHandle, materials);
     resource_methods!(Geometry, GeometryHandle, geometries);
-    resource_methods!(VertexBuffer, VertexBufferHandle, vertex_buffers);
+    resource_methods!(Buffer, BufferHandle, buffers);
 }
 
 impl Resources {
@@ -87,9 +88,16 @@ impl Resources {
         if self.geometries.free_len() > 0 {
             self.geometries.collect_garbage();
         }
-        if self.vertex_buffers.free_len() > 0 {
-            self.vertex_buffers.collect_garbage();
+        if self.buffers.free_len() > 0 {
+            self.buffers.collect_garbage();
         }
+    }
+}
+
+impl Resources {
+    pub(crate) fn get_buffer_slice(&self, buffer_slice: &BufferSlice) -> Option<&[u8]> {
+        let buffer = self.get_buffer(&buffer_slice.buffer)?;
+        buffer.raw().get(buffer_slice.range())
     }
 }
 

@@ -1,34 +1,75 @@
-use super::{Attribute, Geometry, VertexBuffer};
+use wgpu::{BufferUsages, IndexFormat, VertexFormat, VertexStepMode};
+
+use super::{Geometry, IndexBuffer, VertexAttribute, VertexBuffer};
+use crate::{
+    Resources,
+    buffer::{Buffer, BufferSlice},
+    symbol,
+};
+
+fn create_buffer<T: bytemuck::Pod>(data: Vec<T>, usage: BufferUsages) -> Buffer {
+    let byte_data = bytemuck::cast_slice(&data);
+    Buffer::new(byte_data.to_vec(), usage)
+}
+
+fn create_vertex_attribute_from_f32v(
+    resources: &mut Resources,
+    data: Vec<f32>,
+    format: VertexFormat,
+) -> VertexAttribute {
+    let buffer_handle =
+        create_buffer(data, BufferUsages::VERTEX | BufferUsages::COPY_DST).into_handle(resources);
+    let buffer_slice = BufferSlice::from_entire_buffer(resources, buffer_handle);
+    VertexAttribute {
+        vertex_buffer: VertexBuffer {
+            buffer_slice,
+            stride: format.size() as u64,
+            step_mode: VertexStepMode::Vertex,
+        },
+        byte_offset: 0,
+        format,
+    }
+}
+
+fn create_index_buffer_from_u32v(data: Vec<u32>, resources: &mut Resources) -> IndexBuffer {
+    let buffer_handle =
+        create_buffer(data, BufferUsages::INDEX | BufferUsages::COPY_DST).into_handle(resources);
+    let buffer_slice = BufferSlice::from_entire_buffer(resources, buffer_handle);
+    IndexBuffer {
+        buffer_slice,
+        format: IndexFormat::Uint32,
+    }
+}
 
 impl Geometry {
-    pub fn create_unit_quad(resources: &mut crate::Resources) -> Geometry {
-        let positions_buffer = VertexBuffer::new()
-            .with_data(vec![
+    pub fn create_unit_quad(resources: &mut Resources) -> Geometry {
+        let positions_attr = create_vertex_attribute_from_f32v(
+            resources,
+            vec![
                 -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
-            ])
-            .with_stride(3)
-            .into_handle(resources);
-        let positions = Attribute::from_buffer(positions_buffer).with_components(3);
+            ],
+            VertexFormat::Float32x3,
+        );
 
-        let tex_coords_buffer = VertexBuffer::new()
-            .with_data(vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0])
-            .with_stride(2)
-            .into_handle(resources);
-        let tex_coords = Attribute::from_buffer(tex_coords_buffer).with_components(2);
+        let tex_coords_attr = create_vertex_attribute_from_f32v(
+            resources,
+            vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
+            VertexFormat::Float32x2,
+        );
 
-        let colors_buffer = VertexBuffer::new()
-            .with_data(vec![
-                1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-            ])
-            .with_stride(3)
-            .into_handle(resources);
-        let colors = Attribute::from_buffer(colors_buffer).with_components(3);
+        let color_attr = create_vertex_attribute_from_f32v(
+            resources,
+            vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            VertexFormat::Float32x3,
+        );
+
+        let index_buffer = create_index_buffer_from_u32v(vec![0, 1, 2, 2, 3, 0], resources);
 
         Self::new()
-            .with_attribute(symbol!("positions"), positions)
-            .with_attribute(symbol!("tex_coords"), tex_coords)
-            .with_attribute(symbol!("colors"), colors)
-            .with_indices(vec![0, 1, 2, 2, 3, 0])
+            .with_attribute(symbol!("positions"), positions_attr)
+            .with_attribute(symbol!("tex_coords"), tex_coords_attr)
+            .with_attribute(symbol!("colors"), color_attr)
+            .with_indices(index_buffer)
     }
 
     pub fn create_unit_cube(resources: &mut crate::Resources) -> Geometry {
@@ -68,22 +109,13 @@ impl Geometry {
             indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
         }
 
-        let positions_buffer = VertexBuffer::new()
-            .with_data(positions)
-            .with_stride(3)
-            .into_handle(resources);
-        let tex_coords_buffer = VertexBuffer::new()
-            .with_data(tex_coords)
-            .with_stride(2)
-            .into_handle(resources);
-        let colors_buffer = VertexBuffer::new()
-            .with_data(colors)
-            .with_stride(3)
-            .into_handle(resources);
-
-        let positions_attr = Attribute::from_buffer(positions_buffer).with_components(3);
-        let tex_coords_attr = Attribute::from_buffer(tex_coords_buffer).with_components(2);
-        let colors_attr = Attribute::from_buffer(colors_buffer).with_components(3);
+        let positions_attr =
+            create_vertex_attribute_from_f32v(resources, positions, VertexFormat::Float32x3);
+        let tex_coords_attr =
+            create_vertex_attribute_from_f32v(resources, tex_coords, VertexFormat::Float32x2);
+        let colors_attr =
+            create_vertex_attribute_from_f32v(resources, colors, VertexFormat::Float32x3);
+        let indices = create_index_buffer_from_u32v(indices, resources);
 
         Self::new()
             .with_attribute(symbol!("positions"), positions_attr)

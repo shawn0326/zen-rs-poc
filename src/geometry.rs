@@ -1,16 +1,33 @@
-mod attribute;
 mod factory;
-mod vertex_buffer;
 
-pub use attribute::Attribute;
-pub use vertex_buffer::{VertexBuffer, VertexBufferRef};
-
-use crate::{GeometryHandle, Resource, Resources, Symbol};
+use crate::{GeometryHandle, Resource, Resources, Symbol, buffer::BufferSlice};
 use std::collections::HashMap;
+use wgpu::{IndexFormat, VertexFormat};
 
+#[derive(Clone, Debug)]
+pub struct VertexBuffer {
+    pub buffer_slice: BufferSlice,
+    pub stride: u64,
+    pub step_mode: wgpu::VertexStepMode,
+}
+
+#[derive(Debug, Clone)]
+pub struct VertexAttribute {
+    pub vertex_buffer: VertexBuffer,
+    pub byte_offset: u64,
+    pub format: VertexFormat,
+}
+
+#[derive(Debug, Clone)]
+pub struct IndexBuffer {
+    pub buffer_slice: BufferSlice,
+    pub format: IndexFormat,
+}
+
+#[derive(Debug, Clone)]
 pub struct Geometry {
-    attributes: HashMap<Symbol, Attribute>,
-    indices: Option<Vec<u32>>,
+    attributes: HashMap<Symbol, VertexAttribute>,
+    indices: Option<IndexBuffer>,
 }
 
 impl Resource for Geometry {}
@@ -27,17 +44,17 @@ impl Geometry {
         resources.insert_geometry(self)
     }
 
-    pub fn with_attribute(mut self, key: Symbol, attr: Attribute) -> Self {
+    pub fn with_attribute(mut self, key: Symbol, attr: VertexAttribute) -> Self {
         self.attributes.insert(key, attr);
         self
     }
 
-    pub fn with_indices(mut self, indices: Vec<u32>) -> Self {
+    pub fn with_indices(mut self, indices: IndexBuffer) -> Self {
         self.indices = Some(indices);
         self
     }
 
-    pub fn set_attribute(&mut self, key: Symbol, attr: Attribute) -> &mut Self {
+    pub fn set_attribute(&mut self, key: Symbol, attr: VertexAttribute) -> &mut Self {
         self.attributes.insert(key, attr);
         self
     }
@@ -47,11 +64,11 @@ impl Geometry {
         self
     }
 
-    pub fn get_attribute(&self, key: Symbol) -> Option<&Attribute> {
+    pub fn get_attribute(&self, key: Symbol) -> Option<&VertexAttribute> {
         self.attributes.get(&key)
     }
 
-    pub fn set_indices(&mut self, idx: Vec<u32>) -> &mut Self {
+    pub fn set_indices(&mut self, idx: IndexBuffer) -> &mut Self {
         self.indices = Some(idx);
         self
     }
@@ -61,16 +78,7 @@ impl Geometry {
         self
     }
 
-    pub fn indices(&self) -> Option<&[u32]> {
-        self.indices.as_deref()
-    }
-}
-
-impl Clone for Geometry {
-    fn clone(&self) -> Self {
-        Self {
-            attributes: self.attributes.clone(),
-            indices: self.indices.clone(),
-        }
+    pub fn indices(&self) -> Option<&IndexBuffer> {
+        self.indices.as_ref()
     }
 }

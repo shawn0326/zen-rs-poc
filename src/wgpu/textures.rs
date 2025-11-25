@@ -1,5 +1,5 @@
 use crate::texture::{Texture, TextureFormat, TextureSource};
-use crate::{ResourceKey, TextureHandle};
+use crate::{ResourceKey, Resources, TextureHandle};
 use slotmap::SecondaryMap;
 
 pub(super) struct Textures {
@@ -29,16 +29,20 @@ impl Textures {
         queue: &wgpu::Queue,
         texture: &Texture,
         texture_handle: &TextureHandle,
+        resources: &Resources,
     ) -> &GpuTexture {
         match texture.source() {
             TextureSource::D2 {
-                data,
+                buffer_slice,
                 width,
                 height,
             } => {
                 let create_gpu_texture = || {
                     let gpu_texture = GpuTexture::new(device, (*width, *height), texture.format());
-                    gpu_texture.upload(queue, data, *width, *height);
+                    let bytes_slice = resources
+                        .get_buffer_slice(buffer_slice)
+                        .expect("Failed to get buffer view slice for texture upload.");
+                    gpu_texture.upload(queue, bytes_slice, *width, *height);
                     gpu_texture
                 };
 
@@ -121,7 +125,7 @@ impl GpuTexture {
         }
     }
 
-    pub fn upload(&self, queue: &wgpu::Queue, data: &Vec<u8>, width: u32, height: u32) -> &Self {
+    pub fn upload(&self, queue: &wgpu::Queue, data: &[u8], width: u32, height: u32) -> &Self {
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.texture,

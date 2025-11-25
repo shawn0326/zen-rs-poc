@@ -175,7 +175,7 @@ impl<'surf> Renderer<'surf> {
                     current_geometry_handle = Some(geometry_handle.raw());
 
                     batch_start = i as u32;
-                    indices = 0..gpu_geometry.num_indices;
+                    indices = 0..gpu_geometry.index_buffer.2;
                 }
 
                 primitive_bind_group.push_data(&primitive.transform());
@@ -207,7 +207,7 @@ impl<'surf> Renderer<'surf> {
         // todo: implement
     }
 
-    pub fn destroy_vertex_buffer_gpu(&mut self, _: ResourceKey) {
+    pub fn destroy_buffer_gpu(&mut self, _: ResourceKey) {
         // todo: implement
     }
 
@@ -230,9 +230,9 @@ impl<'surf> Renderer<'surf> {
             });
         }
 
-        if resources.vertex_buffers.free_len() > 0 {
-            resources.vertex_buffers.for_each_free(|key| {
-                self.destroy_vertex_buffer_gpu(key);
+        if resources.buffers.free_len() > 0 {
+            resources.buffers.for_each_free(|key| {
+                self.destroy_buffer_gpu(key);
             });
         }
     }

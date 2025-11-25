@@ -35,7 +35,7 @@ impl Targets {
                     }
                     _ => {
                         &textures
-                            .get_gpu_texture(device, queue, &*texture, texture_handle)
+                            .get_gpu_texture(device, queue, &*texture, texture_handle, resources)
                             .texture
                     }
                 };
@@ -77,7 +77,7 @@ impl Targets {
                 let texture_handle = &depth_stencil_attachment.texture;
                 let texture = resources.get_texture(texture_handle).unwrap();
                 let gpu_texture =
-                    textures.get_gpu_texture(device, queue, &*texture, texture_handle);
+                    textures.get_gpu_texture(device, queue, &*texture, texture_handle, resources);
                 Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &gpu_texture
                         .texture

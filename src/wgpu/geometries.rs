@@ -1,5 +1,5 @@
-use crate::{GeometryHandle, ResourceKey, Resources, geometry::Geometry};
-use std::collections::HashMap;
+use crate::{GeometryHandle, ResourceKey, Resources, Symbol, geometry::Geometry};
+use std::{collections::HashMap, ops::Range};
 use wgpu::util::DeviceExt;
 
 pub(super) struct Geometries {
@@ -35,60 +35,56 @@ impl Geometries {
 }
 
 pub(super) struct GpuGeometry {
-    pub positions_buffer: wgpu::Buffer,
-    pub tex_coords_buffer: wgpu::Buffer,
-    pub colors_buffer: wgpu::Buffer,
-    pub index_buffer: wgpu::Buffer,
-    pub num_indices: u32,
+    pub index_buffer: (wgpu::Buffer, Range<wgpu::BufferAddress>, u32),
+    pub vertex_buffers: Vec<(wgpu::Buffer, Range<wgpu::BufferAddress>)>,
     pub vertex_buffer_layouts: Vec<VertexBufferLayout>,
 }
 
 impl GpuGeometry {
     pub fn new(device: &wgpu::Device, geometry: &Geometry, resources: &Resources) -> Self {
-        let positions = geometry
-            .get_attribute(symbol!("positions"))
-            .expect("Geometry must have positions");
-        let tex_coords = geometry
-            .get_attribute(symbol!("tex_coords"))
-            .expect("Geometry must have texture coordinates");
-        let colors = geometry
-            .get_attribute(symbol!("colors"))
-            .expect("Geometry must have colors");
-        let indices = geometry.indices().expect("Geometry must have indices");
+        const NAMES: [Symbol; 3] = [
+            symbol!("positions"),
+            symbol!("tex_coords"),
+            symbol!("colors"),
+        ];
 
-        let positions_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(
-                resources
-                    .get_vertex_buffer(positions.buffer())
+        let mut vertex_buffers = vec![];
+
+        for name in &NAMES {
+            let attr = geometry
+                .get_attribute(*name)
+                .expect(&format!("Geometry must have attribute {:?}", name));
+
+            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: resources
+                    .get_buffer(&attr.vertex_buffer.buffer_slice.buffer)
                     .unwrap()
-                    .data(),
-            ),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let tex_coords_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(
-                resources
-                    .get_vertex_buffer(tex_coords.buffer())
+                    .raw(),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+
+            vertex_buffers.push((buffer, attr.vertex_buffer.buffer_slice.range_u64()));
+        }
+
+        let index_buffer = {
+            let indices = geometry.indices().expect("Geometry must have indices");
+
+            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: resources
+                    .get_buffer(&indices.buffer_slice.buffer)
                     .unwrap()
-                    .data(),
-            ),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let colors_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(
-                resources.get_vertex_buffer(colors.buffer()).unwrap().data(),
-            ),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(indices),
-            usage: wgpu::BufferUsages::INDEX,
-        });
-        let num_indices = indices.len() as u32;
+                    .raw(),
+                usage: wgpu::BufferUsages::INDEX,
+            });
+
+            (
+                buffer,
+                indices.buffer_slice.range_u64(),
+                (indices.buffer_slice.size / indices.format.byte_size()) as u32,
+            )
+        };
 
         let vertex_buffer_layouts = vec![
             // Buffer 0: positions
@@ -96,7 +92,7 @@ impl GpuGeometry {
                 array_stride: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: vec![wgpu::VertexAttribute {
-                    offset: positions.offset() as wgpu::BufferAddress,
+                    offset: 0 as wgpu::BufferAddress,
                     shader_location: 0,
                     format: wgpu::VertexFormat::Float32x3,
                 }],
@@ -124,12 +120,9 @@ impl GpuGeometry {
         ];
 
         Self {
-            positions_buffer,
-            tex_coords_buffer,
-            colors_buffer,
-            index_buffer,
-            num_indices,
+            vertex_buffers,
             vertex_buffer_layouts,
+            index_buffer,
         }
     }
 
@@ -141,10 +134,11 @@ impl GpuGeometry {
     }
 
     pub fn set_buffers_to_render_pass(&self, render_pass: &mut wgpu::RenderPass) -> &Self {
-        render_pass.set_vertex_buffer(0, self.positions_buffer.slice(..));
-        render_pass.set_vertex_buffer(1, self.tex_coords_buffer.slice(..));
-        render_pass.set_vertex_buffer(2, self.colors_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        for (i, (buffer, range)) in self.vertex_buffers.iter().enumerate() {
+            render_pass.set_vertex_buffer(i as u32, buffer.slice(range.clone()));
+        }
+        let (buffer, range, _) = &self.index_buffer;
+        render_pass.set_index_buffer(buffer.slice(range.clone()), wgpu::IndexFormat::Uint32);
         self
     }
 }

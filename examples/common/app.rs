@@ -4,6 +4,7 @@ use std::sync::Arc;
 use winit::window::Window;
 use zen_rs_poc::{
     Resources,
+    buffer::{Buffer, BufferSlice},
     camera::{Camera, PerspectiveProjection},
     geometry::Geometry,
     math::{Color4, Mat4, Vec3},
@@ -114,9 +115,13 @@ impl<'window> App<'window> {
         let diffuse_bytes = include_bytes!("../../assets/textures/logo.jpg");
         let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
         let diffuse_dimensions = diffuse_image.dimensions();
-
+        let image_buffer_handle =
+            Buffer::for_copy(diffuse_image.to_rgba8().into_raw()).into_handle(&mut app.resources);
         let texture = Texture::default().with_source(TextureSource::D2 {
-            data: diffuse_image.to_rgba8().into_raw(),
+            buffer_slice: BufferSlice::from_entire_buffer(
+                &app.resources,
+                image_buffer_handle.clone(),
+            ),
             width: diffuse_dimensions.0,
             height: diffuse_dimensions.1,
         });

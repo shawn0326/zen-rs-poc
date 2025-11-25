@@ -43,6 +43,7 @@ impl GpuMaterialBindGroup {
                                 queue,
                                 resources.get_texture(texture_handle).unwrap(),
                                 texture_handle,
+                                resources,
                             );
                         }
                     }
