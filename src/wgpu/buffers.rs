@@ -56,37 +56,6 @@ impl Buffers {
         self.pool.remove(key);
     }
 
-    pub fn prepare_geometry_buffer(
-        &mut self,
-        device: &wgpu::Device,
-        resources: &Resources,
-        handle: &GeometryHandle,
-    ) {
-        const NAMES: [Symbol; 3] = [
-            symbol!("positions"),
-            symbol!("tex_coords"),
-            symbol!("colors"),
-        ];
-
-        let geometry = resources
-            .get_geometry(handle)
-            .expect("GeometryHandle has been removed from resources.");
-
-        for name in &NAMES {
-            let attr = geometry.get_attribute(*name).unwrap();
-
-            let buffer_handle = &attr.vertex_buffer.buffer_slice.buffer;
-
-            self.prepare_inner_buffer(device, resources, buffer_handle);
-        }
-
-        if let Some(index_buffer) = geometry.indices() {
-            let buffer_handle = &index_buffer.buffer_slice.buffer;
-
-            self.prepare_inner_buffer(device, resources, buffer_handle);
-        }
-    }
-
     pub fn set_buffers_to_render_pass(
         &self,
         resources: &Resources,

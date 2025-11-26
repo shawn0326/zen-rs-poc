@@ -1,6 +1,6 @@
 mod factory;
 
-use crate::{GeometryHandle, Resource, Resources, Symbol, buffer::BufferSlice};
+use crate::{BufferHandle, GeometryHandle, Resource, Resources, Symbol, buffer::BufferSlice};
 use std::collections::HashMap;
 use wgpu::{IndexFormat, VertexFormat};
 
@@ -86,5 +86,19 @@ impl Geometry {
 
     pub fn indices(&self) -> Option<&IndexBuffer> {
         self.indices.as_ref()
+    }
+
+    pub(crate) fn buffer_handles(&self) -> Vec<&BufferHandle> {
+        let mut buffers = Vec::new();
+
+        for attr in self.attributes.values() {
+            buffers.push(&attr.vertex_buffer.buffer_slice.buffer);
+        }
+
+        if let Some(index_buffer) = &self.indices {
+            buffers.push(&index_buffer.buffer_slice.buffer);
+        }
+
+        buffers
     }
 }

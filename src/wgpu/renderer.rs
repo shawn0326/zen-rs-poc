@@ -8,6 +8,10 @@ use super::{
     textures::Textures,
 };
 use crate::{ResourceKey, Resources, camera::Camera, primitive::Primitive, target::RenderTarget};
+use std::collections::HashSet;
+
+const GEOMETRY_CHANGED: u8 = 0b01;
+const MATERIAL_CHANGED: u8 = 0b10;
 
 pub struct Renderer<'surf> {
     adapter: wgpu::Adapter,
@@ -95,6 +99,51 @@ impl<'surf> Renderer<'surf> {
                 label: Some("Render Encoder"),
             });
 
+        let change_flags = {
+            let mut change_flags = Vec::with_capacity(primitives.len());
+
+            let mut last_geometry_handle = None;
+            let mut last_material_handle = None;
+
+            let mut geometry_handles = HashSet::new();
+
+            for primitive in primitives {
+                let geometry_handle = primitive.geometry();
+                let material_handle = primitive.material();
+
+                let mut flag = 0u8;
+
+                if Some(geometry_handle.raw()) != last_geometry_handle {
+                    flag |= GEOMETRY_CHANGED;
+                    last_geometry_handle = Some(geometry_handle.raw());
+                    geometry_handles.insert(primitive.geometry());
+                }
+                if Some(material_handle.raw()) != last_material_handle {
+                    flag |= MATERIAL_CHANGED;
+                    last_material_handle = Some(material_handle.raw());
+                }
+
+                change_flags.push(flag);
+            }
+
+            let buffer_handles = geometry_handles
+                .iter()
+                .flat_map(|geometry_handle| {
+                    resources
+                        .get_geometry(*geometry_handle)
+                        .unwrap()
+                        .buffer_handles()
+                })
+                .collect::<HashSet<_>>();
+
+            buffer_handles.iter().for_each(|buffer_handle| {
+                self.buffers
+                    .prepare_inner_buffer(&self.device, resources, *buffer_handle);
+            });
+
+            change_flags
+        };
+
         {
             let mut render_pass = self.targets.create_render_pass(
                 &self.device,
@@ -117,22 +166,13 @@ impl<'surf> Renderer<'surf> {
             let mut batch_start = 0u32;
             let mut indices = 0..0;
 
-            let mut current_material_handle: Option<ResourceKey> = None;
-            let mut current_geometry_handle: Option<ResourceKey> = None;
-
             for (i, primitive) in primitives.iter().enumerate() {
                 let geometry_handle = primitive.geometry();
                 let material_handle = primitive.material();
 
-                let material_changed = match current_material_handle {
-                    Some(handle) => handle != material_handle.raw(),
-                    None => true,
-                };
-
-                let geometry_changed = match current_geometry_handle {
-                    Some(handle) => handle != geometry_handle.raw(),
-                    None => true,
-                };
+                let flag = change_flags[i];
+                let geometry_changed = (flag & GEOMETRY_CHANGED) != 0;
+                let material_changed = (flag & MATERIAL_CHANGED) != 0;
 
                 if geometry_changed || material_changed {
                     if i > 0 {
@@ -170,21 +210,12 @@ impl<'surf> Renderer<'surf> {
                     }
 
                     if geometry_changed {
-                        self.buffers.prepare_geometry_buffer(
-                            &self.device,
-                            resources,
-                            geometry_handle,
-                        );
-
                         self.buffers.set_buffers_to_render_pass(
                             resources,
                             &mut render_pass,
                             geometry_handle,
                         );
                     }
-
-                    current_material_handle = Some(material_handle.raw());
-                    current_geometry_handle = Some(geometry_handle.raw());
 
                     batch_start = i as u32;
 

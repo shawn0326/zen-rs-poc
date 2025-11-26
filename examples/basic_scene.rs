@@ -27,6 +27,18 @@ struct AppHandler {
 
 impl ApplicationHandler<App<'static>> for AppHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        // Initialize an OrbitController based on the starting camera
+        let orbit = {
+            let eye = glam::Vec3::new(0.0, 0.0, 10.0);
+            let target = glam::Vec3::ZERO;
+            let dir = eye - target;
+            let radius = dir.length().max(0.01);
+            let yaw = dir.x.atan2(dir.z).to_degrees();
+            let pitch = (dir.y / radius).asin().to_degrees();
+            OrbitController::new(target, radius, yaw, pitch)
+        };
+        self.orbit = Some(orbit);
+
         #[cfg(target_arch = "wasm32")]
         {
             let window = wgpu::web_sys::window().unwrap_throw();
@@ -58,17 +70,6 @@ impl ApplicationHandler<App<'static>> for AppHandler {
 
             let app = block_on(App::new_benchmark(window, 1000_000));
             app.window.request_redraw();
-            // Initialize an OrbitController based on the starting camera
-            let orbit = {
-                let eye = glam::Vec3::new(0.0, 0.0, 10.0);
-                let target = glam::Vec3::ZERO;
-                let dir = eye - target;
-                let radius = dir.length().max(0.01);
-                let yaw = dir.x.atan2(dir.z).to_degrees();
-                let pitch = (dir.y / radius).asin().to_degrees();
-                OrbitController::new(target, radius, yaw, pitch)
-            };
-            self.orbit = Some(orbit);
             self.app = Some(app);
         }
     }
@@ -170,6 +171,7 @@ pub fn start() {
 
         let mut app_handler = AppHandler {
             app: None,
+            orbit: None,
             proxy: Some(event_loop.create_proxy()),
         };
 

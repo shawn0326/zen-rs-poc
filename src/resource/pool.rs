@@ -1,5 +1,6 @@
 use slotmap::{SlotMap, new_key_type};
 use std::fmt::{Debug, Formatter, Result};
+use std::hash::{Hash, Hasher};
 use std::{
     marker::PhantomData,
     sync::{Arc, Mutex},
@@ -43,6 +44,14 @@ impl<R: Resource> Clone for ResourceHandle<R> {
 impl<R: Resource> PartialEq for ResourceHandle<R> {
     fn eq(&self, other: &Self) -> bool {
         self.raw == other.raw
+    }
+}
+
+impl<R: Resource> Eq for ResourceHandle<R> {}
+
+impl<R: Resource> Hash for ResourceHandle<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.raw.hash(state);
     }
 }
 
