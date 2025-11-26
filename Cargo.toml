@@ -37,3 +37,6 @@ console_log = "1.0"
 members = [
     "crates/*"
 ]
+
+[profile.release]
+debug = true

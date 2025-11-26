@@ -56,7 +56,7 @@ impl ApplicationHandler<App<'static>> for AppHandler {
             let window_attributes = Window::default_attributes().with_title("Basic Scene Example");
             let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-            let app = block_on(App::new_benchmark(window, 50000));
+            let app = block_on(App::new_benchmark(window, 1000_000));
             app.window.request_redraw();
             // Initialize an OrbitController based on the starting camera
             let orbit = {
