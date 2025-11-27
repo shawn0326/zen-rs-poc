@@ -239,7 +239,7 @@ mod tests {
 
         let mut material = Material::from_shader(shader.clone());
 
-        assert_eq!(material.bindings.len(), 2);
+        assert_eq!(material.bindings.len(), 3);
 
         match &material.bindings[0] {
             MaterialBindingData::UniformBuffer(buffer) => {

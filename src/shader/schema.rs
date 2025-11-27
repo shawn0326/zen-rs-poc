@@ -26,7 +26,8 @@ pub(crate) enum BindingType {
     },
     /// Texture binding (currently a generic 2D texture slot).
     /// Future extension ideas:
-    /// - Distinguish 2D / Cube / Array / 3D / Storage textures
+    /// - Distinguish between 2D, Cube, Array, 3D, and Storage textures.
+    /// Note: Samplers are now a separate binding type; future extensions here should focus solely on texture type distinctions.
     Texture,
 
     /// Sampler binding.

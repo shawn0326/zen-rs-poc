@@ -63,6 +63,10 @@ impl MaterialBindingData {
         }
     }
 
+    /// Returns the optional sampler for this binding.
+    ///
+    /// Panics
+    /// - If this binding is not `Sampler`.
     #[inline(always)]
     pub fn expect_sampler(&self) -> &Option<Box<Sampler>> {
         match self {

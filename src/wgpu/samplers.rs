@@ -8,12 +8,12 @@ pub(super) struct Samplers {
 
 impl Samplers {
     pub fn new(device: &wgpu::Device) -> Self {
-        let mut _self = Self {
+        let mut samplers = Self {
             default_sampler: Sampler::default(),
             hash_map: HashMap::new(),
         };
-        _self.prepare(device, _self.default_sampler);
-        _self
+        samplers.prepare(device, samplers.default_sampler);
+        samplers
     }
 
     pub fn prepare(&mut self, device: &wgpu::Device, sampler_desc: Sampler) -> &wgpu::Sampler {
