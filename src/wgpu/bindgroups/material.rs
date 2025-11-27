@@ -28,7 +28,7 @@ impl GpuMaterialBindGroup {
             for (index, binding_entry) in shader.binding_schema().iter().enumerate() {
                 match &binding_entry.ty {
                     BindingType::UniformBuffer { .. } => {
-                        let data = material.bindings()[index].expect_uniform_buffer();
+                        let data = material.parameters()[index].expect_uniform_buffer();
 
                         buffer = Some(device.create_buffer_init(
                             &wgpu::util::BufferInitDescriptor {
@@ -39,7 +39,8 @@ impl GpuMaterialBindGroup {
                         ));
                     }
                     BindingType::Texture => {
-                        if let Some(texture_handle) = material.bindings()[index].expect_texture() {
+                        if let Some(texture_handle) = material.parameters()[index].expect_texture()
+                        {
                             textures.get_gpu_texture(
                                 device,
                                 queue,
@@ -50,7 +51,7 @@ impl GpuMaterialBindGroup {
                         }
                     }
                     BindingType::Sampler => {
-                        if let Some(sampler_box) = material.bindings()[index].expect_sampler() {
+                        if let Some(sampler_box) = material.parameters()[index].expect_sampler() {
                             samplers.prepare(device, **sampler_box);
                         }
                     }
@@ -95,7 +96,7 @@ impl GpuMaterialBindGroup {
                     });
 
                     let gpu_texture;
-                    if let Some(texture_handle) = material.bindings()[index].expect_texture() {
+                    if let Some(texture_handle) = material.parameters()[index].expect_texture() {
                         gpu_texture = textures.get_gpu_texture_by_id(texture_handle).unwrap();
                     } else {
                         gpu_texture = textures.get_default_gpu_texture();
@@ -115,7 +116,7 @@ impl GpuMaterialBindGroup {
                     });
 
                     let sampler =
-                        if let Some(sampler_box) = &material.bindings()[index].expect_sampler() {
+                        if let Some(sampler_box) = &material.parameters()[index].expect_sampler() {
                             samplers.get_gpu_sampler(sampler_box).unwrap()
                         } else {
                             samplers.get_default_gpu_sampler()

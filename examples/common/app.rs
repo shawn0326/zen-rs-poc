@@ -140,7 +140,7 @@ impl<'window> App<'window> {
         let mut material1 = zen_rs_poc::material::Material::from_shader(unlit_shader.clone());
         material1
             .set_param_vec4f(symbol!("albedo_factor"), [1.0, 1.0, 1.0, 1.0])
-            .set_param_t(symbol!("albedo_texture"), texture_handle);
+            .set_param_t(symbol!("albedo_texture"), Some(texture_handle));
 
         let mut material2 = zen_rs_poc::material::Material::from_shader(pbr_shader.clone());
         material2

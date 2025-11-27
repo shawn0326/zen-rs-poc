@@ -8,34 +8,15 @@
 //! - Uniform buffers are laid out and sized by the shader builder (std140-like).
 //! - All uniform bytes are zero-initialized; textures start as `None`.
 
-mod binding_data;
+mod parameter;
 
-pub(crate) use binding_data::*;
+pub(crate) use parameter::*;
 
 use crate::Symbol;
 use crate::math::*;
 use crate::sampler::Sampler;
 use crate::shader::*;
 use crate::{Resource, TextureHandle};
-
-/// Builds binding storage for a given shader:
-/// - Uniform buffers are allocated with zeroed bytes sized by `total_size`.
-/// - Texture bindings are initialized as `None`.
-/// - The output order matches `shader.binding_schema()`.
-fn build_material_bindings(shader: &Shader) -> Box<[MaterialBindingData]> {
-    let mut bindings = Vec::new();
-    for entry in shader.binding_schema() {
-        let resource = match &entry.ty {
-            BindingType::UniformBuffer { total_size, .. } => {
-                MaterialBindingData::UniformBuffer(vec![0u8; *total_size].into_boxed_slice())
-            }
-            BindingType::Texture => MaterialBindingData::Texture(None),
-            BindingType::Sampler => MaterialBindingData::Sampler(None),
-        };
-        bindings.push(resource);
-    }
-    bindings.into_boxed_slice()
-}
 
 /// Generates typed uniform accessors (setter/getter) with consistent docs.
 /// Each setter accepts any type convertible into `$ty` via `Into`,
@@ -68,13 +49,13 @@ macro_rules! impl_uniform_accessors {
 /// Per-instance material data aligned with a `Shader`'s binding schema.
 ///
 /// - `shader`: the shader this material adheres to (layout/metadata source).
-/// - `bindings`: per-binding storage:
+/// - `parameters`: per-binding storage:
 ///   - UniformBuffer: raw bytes sized and aligned by the builder
 ///   - Texture: optional texture handle
 #[derive(Clone)]
 pub struct Material {
     shader: ShaderRc,
-    bindings: Box<[MaterialBindingData]>,
+    parameters: Box<[MaterialParameter]>,
 }
 
 impl Resource for Material {}
@@ -86,8 +67,10 @@ impl Material {
     /// - Texture slots start as `None`.
     /// - Consumes `shader` (clone at callsite if you want to keep it).
     pub fn new(shader: ShaderRc) -> Self {
-        let bindings = build_material_bindings(&shader);
-        Self { shader, bindings }
+        Self {
+            parameters: MaterialParameter::from_shader(&shader),
+            shader,
+        }
     }
 
     /// Convenience alias of [`Material::new`].
@@ -106,8 +89,8 @@ impl Material {
 
     /// Internal accessor to the binding storage (schema-aligned).
     #[inline]
-    pub(crate) fn bindings(&self) -> &Box<[MaterialBindingData]> {
-        &self.bindings
+    pub(crate) fn parameters(&self) -> &Box<[MaterialParameter]> {
+        &self.parameters
     }
 
     /// Writes a POD uniform value into its byte range.
@@ -121,7 +104,7 @@ impl Material {
             .uniform_field_meta(key)
             .expect("unknown uniform key");
 
-        let buf = self.bindings[meta.index].expect_uniform_buffer_mut();
+        let buf = self.parameters[meta.index].expect_uniform_buffer_mut();
         let bytes = bytemuck::bytes_of(value);
         let end = meta.offset + bytes.len();
 
@@ -143,7 +126,7 @@ impl Material {
             .uniform_field_meta(key)
             .expect("unknown uniform key");
 
-        let buf = self.bindings[meta.index].expect_uniform_buffer();
+        let buf = self.parameters[meta.index].expect_uniform_buffer();
         let size = core::mem::size_of::<T>();
         let end = meta.offset + size;
 
@@ -184,15 +167,22 @@ impl Material {
 
     /// Assigns a texture to the specified texture binding key.
     #[inline]
-    pub fn set_param_t(&mut self, key: Symbol, texture: TextureHandle) -> &mut Self {
+    pub fn set_param_t(&mut self, key: Symbol, texture: Option<TextureHandle>) -> &mut Self {
         let meta = self.shader.texture_meta(key).expect("unknown texture key");
-        if !matches!(
-            self.shader.binding_schema()[meta.index].ty,
-            BindingType::Texture
-        ) {
-            panic!("binding key is not a texture");
+        let entry = &self.shader.binding_schema()[meta.index];
+        let parameter = &mut self.parameters[meta.index];
+
+        match (&entry.ty, parameter) {
+            (BindingType::Texture, MaterialParameter::Texture { val, ver }) => {
+                if val == &texture {
+                    return self;
+                }
+                *val = texture;
+                ver.bump();
+            }
+            (ty, _) => panic!("binding type mismatch: expected Texture, found {:?}", ty),
         }
-        self.bindings[meta.index] = MaterialBindingData::Texture(Some(texture));
+
         self
     }
 
@@ -200,20 +190,27 @@ impl Material {
     #[inline]
     pub fn get_param_t(&self, key: Symbol) -> Option<&TextureHandle> {
         let meta = self.shader.texture_meta(key).expect("unknown texture key");
-        self.bindings[meta.index].expect_texture().as_ref()
+        self.parameters[meta.index].expect_texture().as_ref()
     }
 
     /// Assigns a sampler to the specified sampler binding key.
     #[inline]
     pub fn set_param_s(&mut self, key: Symbol, sampler: Sampler) -> &mut Self {
         let meta = self.shader.sampler_meta(key).expect("unknown sampler key");
-        if !matches!(
-            self.shader.binding_schema()[meta.index].ty,
-            BindingType::Sampler
-        ) {
-            panic!("binding key is not a sampler");
+        let entry = &self.shader.binding_schema()[meta.index];
+        let parameter = &mut self.parameters[meta.index];
+
+        match (&entry.ty, parameter) {
+            (BindingType::Sampler, MaterialParameter::Sampler { val, ver }) => {
+                if val.as_deref() == Some(&sampler) {
+                    return self;
+                }
+                *val = Some(Box::new(sampler));
+                ver.bump();
+            }
+            (ty, _) => panic!("binding type mismatch: expected Sampler, found {:?}", ty),
         }
-        self.bindings[meta.index] = MaterialBindingData::Sampler(Some(Box::new(sampler)));
+
         self
     }
 
@@ -221,10 +218,7 @@ impl Material {
     #[inline]
     pub fn get_param_s(&self, key: Symbol) -> Option<&Sampler> {
         let meta = self.shader.sampler_meta(key).expect("unknown sampler key");
-        match &self.bindings[meta.index] {
-            MaterialBindingData::Sampler(opt_sampler) => opt_sampler.as_deref(),
-            _ => panic!("binding key is not a sampler"),
-        }
+        self.parameters[meta.index].expect_sampler().as_deref()
     }
 }
 
@@ -239,17 +233,17 @@ mod tests {
 
         let mut material = Material::from_shader(shader.clone());
 
-        assert_eq!(material.bindings.len(), 3);
+        assert_eq!(material.parameters.len(), 3);
 
-        match &material.bindings[0] {
-            MaterialBindingData::UniformBuffer(buffer) => {
+        match &material.parameters[0] {
+            MaterialParameter::UniformBuffer(buffer) => {
                 assert_eq!(buffer.len(), 32); // std140: vec4 + float
             }
             _ => panic!("Expected UniformBuffer"),
         }
 
-        match &material.bindings[1] {
-            MaterialBindingData::Texture(_) => {}
+        match &material.parameters[1] {
+            MaterialParameter::Texture { .. } => {}
             _ => panic!("Expected Texture"),
         }
 
