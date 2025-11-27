@@ -24,12 +24,13 @@ pub(crate) enum BindingType {
         total_size: usize,
         members: Box<[UniformDesc]>,
     },
-    /// Sampled texture binding (currently a generic 2D texture slot).
+    /// Texture binding (currently a generic 2D texture slot).
     /// Future extension ideas:
     /// - Distinguish 2D / Cube / Array / 3D / Storage textures
-    /// - Include expected sample type / view dimension / multisample flag
-    /// - Carry sampler binding pairing info to auto-generate layouts
     Texture,
+
+    /// Sampler binding.
+    Sampler,
 }
 
 /// A single binding entry in the shader's binding schema.

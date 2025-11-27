@@ -1,3 +1,4 @@
+use super::super::samplers::Samplers;
 use super::super::textures::Textures;
 use crate::material::Material;
 use crate::shader::BindingType;
@@ -14,6 +15,7 @@ impl GpuMaterialBindGroup {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         textures: &mut Textures,
+        samplers: &mut Samplers,
         material: &Material,
         resources: &crate::Resources,
     ) -> Self {
@@ -45,6 +47,11 @@ impl GpuMaterialBindGroup {
                                 texture_handle,
                                 resources,
                             );
+                        }
+                    }
+                    BindingType::Sampler => {
+                        if let Some(sampler_box) = material.bindings()[index].expect_sampler() {
+                            samplers.prepare(device, **sampler_box);
                         }
                     }
                 }
@@ -86,12 +93,6 @@ impl GpuMaterialBindGroup {
                         },
                         count: None,
                     });
-                    layout_entries.push(wgpu::BindGroupLayoutEntry {
-                        binding: binding_entry.slot + 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    });
 
                     let gpu_texture;
                     if let Some(texture_handle) = material.bindings()[index].expect_texture() {
@@ -104,9 +105,25 @@ impl GpuMaterialBindGroup {
                         binding: binding_entry.slot,
                         resource: wgpu::BindingResource::TextureView(&gpu_texture.view),
                     });
+                }
+                BindingType::Sampler => {
+                    layout_entries.push(wgpu::BindGroupLayoutEntry {
+                        binding: binding_entry.slot,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    });
+
+                    let sampler =
+                        if let Some(sampler_box) = &material.bindings()[index].expect_sampler() {
+                            samplers.get_gpu_sampler(sampler_box).unwrap()
+                        } else {
+                            samplers.get_default_gpu_sampler()
+                        };
+
                     entries.push(wgpu::BindGroupEntry {
-                        binding: binding_entry.slot + 1,
-                        resource: wgpu::BindingResource::Sampler(&gpu_texture.sampler),
+                        binding: binding_entry.slot,
+                        resource: wgpu::BindingResource::Sampler(sampler),
                     });
                 }
             }

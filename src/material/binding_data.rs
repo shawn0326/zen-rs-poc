@@ -4,7 +4,7 @@
 //! `Shader`'s binding schema. It is not exposed publicly; callers access it
 //! indirectly through `Material`.
 
-use crate::TextureHandle;
+use crate::{TextureHandle, sampler::Sampler};
 
 /// Per-binding data stored by a `Material`.
 ///
@@ -20,6 +20,10 @@ pub enum MaterialBindingData {
     /// Texture binding stored as an optional handle.
     /// `None` indicates the texture is currently unbound.
     Texture(Option<TextureHandle>),
+
+    /// Sampler binding stored as an optional sampler.
+    /// `None` indicates the sampler is currently unbound.
+    Sampler(Option<Box<Sampler>>),
 }
 
 impl MaterialBindingData {
@@ -56,6 +60,14 @@ impl MaterialBindingData {
         match self {
             MaterialBindingData::Texture(t) => t,
             _ => panic!("expected Texture at index"),
+        }
+    }
+
+    #[inline(always)]
+    pub fn expect_sampler(&self) -> &Option<Box<Sampler>> {
+        match self {
+            MaterialBindingData::Sampler(s) => s,
+            _ => panic!("expected Sampler at index"),
         }
     }
 }

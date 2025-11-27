@@ -3,6 +3,7 @@ use super::{
     buffers::Buffers,
     geometries::Geometries,
     pipelines::Pipelines,
+    samplers::Samplers,
     surfaces::Surfaces,
     targets::Targets,
     textures::Textures,
@@ -26,6 +27,7 @@ pub struct Renderer<'surf> {
     material_bind_groups: MaterialBindGroups,
     textures: Textures,
     buffers: Buffers,
+    samplers: Samplers,
 }
 
 impl<'surf> Renderer<'surf> {
@@ -63,6 +65,7 @@ impl<'surf> Renderer<'surf> {
         let material_bind_groups = MaterialBindGroups::new();
         let textures = Textures::new(&device, &queue);
         let buffers = Buffers::new();
+        let samplers = Samplers::new(&device);
 
         surfaces.add_surface(surface);
 
@@ -79,6 +82,7 @@ impl<'surf> Renderer<'surf> {
             material_bind_groups,
             textures,
             buffers,
+            samplers,
         }
     }
 
@@ -188,6 +192,7 @@ impl<'surf> Renderer<'surf> {
                             &self.queue,
                             material_handle,
                             &mut self.textures,
+                            &mut self.samplers,
                             resources,
                         );
 

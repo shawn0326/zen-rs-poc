@@ -29,9 +29,16 @@ pub(crate) struct UniformFieldMeta {
 /// Metadata for a texture binding.
 /// Fields:
 /// - index: index into `binding_schema` pointing to the texture BindingEntry.
-/// Future additions may include sample type, view dimension, array/slice info, etc.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct TextureMeta {
+    pub(crate) index: usize,
+}
+
+/// Metadata for a sampler binding.
+/// Fields:
+/// - index: index into `binding_schema` pointing to the sampler BindingEntry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct SamplerMeta {
     pub(crate) index: usize,
 }
 
@@ -52,6 +59,7 @@ pub struct Shader {
     vertex_schema: Box<[VertexEntry]>,
     uniform_lut: OnceLock<HashMap<Symbol, UniformFieldMeta>>,
     texture_lut: OnceLock<HashMap<Symbol, TextureMeta>>,
+    sampler_lut: OnceLock<HashMap<Symbol, SamplerMeta>>,
 }
 
 impl Shader {
@@ -69,6 +77,7 @@ impl Shader {
             vertex_schema,
             uniform_lut: OnceLock::new(),
             texture_lut: OnceLock::new(),
+            sampler_lut: OnceLock::new(),
         }
     }
 
@@ -139,6 +148,21 @@ impl Shader {
         })
     }
 
+    /// Builds (once) and caches the map: sampler symbol → binding metadata.
+    fn sampler_map(&self) -> &HashMap<Symbol, SamplerMeta> {
+        self.sampler_lut.get_or_init(|| {
+            let mut map = HashMap::new();
+            for (i, entry) in self.binding_schema.iter().enumerate() {
+                if let BindingType::Sampler = entry.ty {
+                    if map.insert(entry.key, SamplerMeta { index: i }).is_some() {
+                        panic!("duplicate sampler key: {:?}", entry.key);
+                    }
+                }
+            }
+            map
+        })
+    }
+
     /// Fast lookup of uniform field metadata by symbol.
     #[inline]
     pub(crate) fn uniform_field_meta(&self, key: Symbol) -> Option<UniformFieldMeta> {
@@ -149,6 +173,12 @@ impl Shader {
     #[inline]
     pub(crate) fn texture_meta(&self, key: Symbol) -> Option<TextureMeta> {
         self.texture_map().get(&key).copied()
+    }
+
+    /// Fast lookup of sampler binding metadata by symbol.
+    #[inline]
+    pub(crate) fn sampler_meta(&self, key: Symbol) -> Option<SamplerMeta> {
+        self.sampler_map().get(&key).copied()
     }
 }
 
@@ -165,7 +195,8 @@ impl fmt::Debug for Shader {
             .field("bindings_len", &self.binding_schema.len())
             .field("vertex_attrs_len", &self.vertex_schema.len())
             .field("uniform_cache_init", &self.uniform_lut.get().is_some())
-            .field("texture_cache_init", &self.texture_lut.get().is_some());
+            .field("texture_cache_init", &self.texture_lut.get().is_some())
+            .field("sampler_cache_init", &self.sampler_lut.get().is_some());
 
         if alternate {
             ds.field("binding_schema", &self.binding_schema)
@@ -185,6 +216,7 @@ impl Clone for Shader {
             // Do not copy caches, reinitialize
             uniform_lut: OnceLock::new(),
             texture_lut: OnceLock::new(),
+            sampler_lut: OnceLock::new(),
         }
     }
 }

@@ -159,13 +159,23 @@ impl ShaderBuilder {
     }
 
     /// Adds a texture binding at the given WGSL `@binding(slot)`.
-    /// Sampler policy is backend‑specific or defined elsewhere.
     pub fn texture(mut self, name: &str, slot: u32) -> Self {
         self.binding_schema.push(BindingEntry {
             key: symbol!(name),
             name: name.into(),
             slot,
             ty: BindingType::Texture,
+        });
+        self
+    }
+
+    /// Adds a sampler binding at the given WGSL `@binding(slot)`.
+    pub fn sampler(mut self, name: &str, slot: u32) -> Self {
+        self.binding_schema.push(BindingEntry {
+            key: symbol!(name),
+            name: name.into(),
+            slot,
+            ty: BindingType::Sampler,
         });
         self
     }

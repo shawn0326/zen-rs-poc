@@ -14,6 +14,7 @@ pub(crate) use binding_data::*;
 
 use crate::Symbol;
 use crate::math::*;
+use crate::sampler::Sampler;
 use crate::shader::*;
 use crate::{Resource, TextureHandle};
 
@@ -29,6 +30,7 @@ fn build_material_bindings(shader: &Shader) -> Box<[MaterialBindingData]> {
                 MaterialBindingData::UniformBuffer(vec![0u8; *total_size].into_boxed_slice())
             }
             BindingType::Texture => MaterialBindingData::Texture(None),
+            BindingType::Sampler => MaterialBindingData::Sampler(None),
         };
         bindings.push(resource);
     }
@@ -199,6 +201,30 @@ impl Material {
     pub fn get_param_t(&self, key: Symbol) -> Option<&TextureHandle> {
         let meta = self.shader.texture_meta(key).expect("unknown texture key");
         self.bindings[meta.index].expect_texture().as_ref()
+    }
+
+    /// Assigns a sampler to the specified sampler binding key.
+    #[inline]
+    pub fn set_param_s(&mut self, key: Symbol, sampler: Sampler) -> &mut Self {
+        let meta = self.shader.sampler_meta(key).expect("unknown sampler key");
+        if !matches!(
+            self.shader.binding_schema()[meta.index].ty,
+            BindingType::Sampler
+        ) {
+            panic!("binding key is not a sampler");
+        }
+        self.bindings[meta.index] = MaterialBindingData::Sampler(Some(Box::new(sampler)));
+        self
+    }
+
+    /// Returns the sampler stored at the binding (if any).
+    #[inline]
+    pub fn get_param_s(&self, key: Symbol) -> Option<&Sampler> {
+        let meta = self.shader.sampler_meta(key).expect("unknown sampler key");
+        match &self.bindings[meta.index] {
+            MaterialBindingData::Sampler(opt_sampler) => opt_sampler.as_deref(),
+            _ => panic!("binding key is not a sampler"),
+        }
     }
 }
 

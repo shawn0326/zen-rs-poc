@@ -1,6 +1,7 @@
 mod global;
 mod material;
 mod primitive;
+use super::samplers::Samplers;
 use super::textures::Textures;
 use crate::{MaterialHandle, ResourceKey};
 pub(super) use global::GlobalBindGroup;
@@ -25,6 +26,7 @@ impl MaterialBindGroups {
         queue: &wgpu::Queue,
         material_handle: &MaterialHandle,
         textures: &mut Textures,
+        samplers: &mut Samplers,
         resources: &crate::Resources,
     ) -> &GpuMaterialBindGroup {
         let material = resources.get_material(material_handle).unwrap();
@@ -32,8 +34,9 @@ impl MaterialBindGroups {
         match self.map.entry(material_handle.raw()) {
             Entry::Occupied(o) => o.into_mut(),
             Entry::Vacant(v) => {
-                let gpu_material_bind_group =
-                    GpuMaterialBindGroup::new(device, queue, textures, &*material, resources);
+                let gpu_material_bind_group = GpuMaterialBindGroup::new(
+                    device, queue, textures, samplers, &*material, resources,
+                );
 
                 v.insert(gpu_material_bind_group)
             }
