@@ -20,6 +20,23 @@ macro_rules! symbol {
     ($s:expr) => {{ $crate::Symbol($crate::fnv1a64($s.as_bytes())) }};
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Ord, PartialOrd, Hash)]
+pub struct DirtyVersion(u64);
+
+impl DirtyVersion {
+    pub fn new() -> Self {
+        Self(0)
+    }
+
+    pub fn as_u64(&self) -> u64 {
+        self.0
+    }
+
+    pub fn bump(&mut self) {
+        self.0 = self.0.wrapping_add(1);
+    }
+}
+
 pub mod buffer;
 pub mod camera;
 pub mod geometry;
