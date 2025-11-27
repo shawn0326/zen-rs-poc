@@ -13,7 +13,7 @@ pub trait Resource {}
 pub struct ResourceHandle<R: Resource> {
     raw: ResourceKey,
     refcount: Arc<dyn Fn(ResourceKey) + Send + Sync>,
-    _phantom: PhantomData<R>,
+    _phantom: PhantomData<fn() -> R>,
 }
 
 impl<R: Resource> ResourceHandle<R> {

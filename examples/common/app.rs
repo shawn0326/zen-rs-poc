@@ -1,5 +1,6 @@
 use image::GenericImageView;
 use rand::Rng;
+use rayon::prelude::*;
 use std::sync::Arc;
 use winit::window::Window;
 use zen_rs_poc::{
@@ -193,7 +194,7 @@ impl<'window> App<'window> {
 
     pub fn render(&mut self) {
         self.primitives
-            .sort_unstable_by_key(|item| (item.material().raw(), item.geometry().raw()));
+            .par_sort_unstable_by_key(|item| (item.material().raw(), item.geometry().raw()));
 
         self.renderer.render(
             &self.primitives,

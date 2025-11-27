@@ -2836,6 +2836,7 @@ dependencies = [
  "paste",
  "pollster",
  "rand",
+ "rayon",
  "slotmap",
  "wasm-bindgen",
  "wasm-bindgen-futures",

@@ -58,7 +58,7 @@ impl ApplicationHandler<App<'static>> for AppHandler {
             if let Some(proxy) = self.proxy.take() {
                 wasm_bindgen_futures::spawn_local(async move {
                     log::debug!("Window size: {:?}", window.inner_size());
-                    let _ = proxy.send_event(App::new_benchmark(window, 50000).await);
+                    let _ = proxy.send_event(App::new_benchmark(window, 200000).await);
                 });
             }
         }
