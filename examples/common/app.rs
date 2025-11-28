@@ -203,6 +203,15 @@ impl<'window> App<'window> {
             &mut self.resources,
         );
 
+        // if let Some(primitive) = self.primitives.first() {
+        //     let material_handel = primitive.material();
+        //     self.resources
+        //         .get_material_mut(material_handel)
+        //         .unwrap()
+        //         .set_param_vec4f(symbol!("albedo_factor"), [0.0, 1.0, 1.0, 1.0])
+        //         .set_param_t(symbol!("albedo_texture"), None);
+        // }
+
         // self.renderer.destroy_garbage_gpu(&self.resources);
         // self.resources.collect_garbage();
     }

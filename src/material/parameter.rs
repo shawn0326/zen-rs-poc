@@ -16,7 +16,7 @@ use crate::{DirtyVersion, TextureHandle, sampler::Sampler};
 pub enum MaterialParameter {
     /// Raw bytes that back a uniform-buffer binding.
     /// The length equals the total size computed by the layout.
-    UniformBuffer(Box<[u8]>),
+    UniformBuffer { val: Box<[u8]>, ver: DirtyVersion },
 
     /// Texture binding stored as an optional handle.
     /// `None` indicates the texture is currently unbound.
@@ -36,7 +36,10 @@ pub enum MaterialParameter {
 impl MaterialParameter {
     #[inline]
     pub fn uniform_buffer<T: AsRef<[u8]>>(val: T) -> Self {
-        MaterialParameter::UniformBuffer(val.as_ref().into())
+        MaterialParameter::UniformBuffer {
+            val: val.as_ref().into(),
+            ver: DirtyVersion::new(),
+        }
     }
 
     #[inline]
@@ -83,19 +86,7 @@ impl MaterialParameter {
     #[inline(always)]
     pub fn expect_uniform_buffer(&self) -> &[u8] {
         match self {
-            MaterialParameter::UniformBuffer(b) => &b[..],
-            _ => panic!("expected UniformBuffer at index"),
-        }
-    }
-
-    /// Returns a mutable view of the uniform-buffer bytes.
-    ///
-    /// Panics
-    /// - If this binding is not `UniformBuffer`.
-    #[inline(always)]
-    pub fn expect_uniform_buffer_mut(&mut self) -> &mut [u8] {
-        match self {
-            MaterialParameter::UniformBuffer(b) => &mut b[..],
+            MaterialParameter::UniformBuffer { val, .. } => &val[..],
             _ => panic!("expected UniformBuffer at index"),
         }
     }

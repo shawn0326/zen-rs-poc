@@ -104,13 +104,18 @@ impl Material {
             .uniform_field_meta(key)
             .expect("unknown uniform key");
 
-        let buf = self.parameters[meta.index].expect_uniform_buffer_mut();
-        let bytes = bytemuck::bytes_of(value);
-        let end = meta.offset + bytes.len();
+        if let MaterialParameter::UniformBuffer { val, ver } = &mut self.parameters[meta.index] {
+            let bytes = bytemuck::bytes_of(value);
+            let end = meta.offset + bytes.len();
 
-        debug_assert!(meta.size == bytes.len());
+            debug_assert!(meta.size == bytes.len());
 
-        buf[meta.offset..end].copy_from_slice(bytes);
+            val[meta.offset..end].copy_from_slice(bytes);
+
+            ver.bump();
+        } else {
+            panic!("expected UniformBuffer at index");
+        }
 
         self
     }
@@ -236,8 +241,8 @@ mod tests {
         assert_eq!(material.parameters.len(), 3);
 
         match &material.parameters[0] {
-            MaterialParameter::UniformBuffer(buffer) => {
-                assert_eq!(buffer.len(), 32); // std140: vec4 + float
+            MaterialParameter::UniformBuffer { val, .. } => {
+                assert_eq!(val.len(), 32); // std140: vec4 + float
             }
             _ => panic!("Expected UniformBuffer"),
         }

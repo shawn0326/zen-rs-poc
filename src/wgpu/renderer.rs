@@ -1,14 +1,18 @@
 use super::{
-    bindgroups::{GlobalBindGroup, MaterialBindGroups, PrimitiveBindGroup},
+    bindgroups::{GlobalBindGroup, PrimitiveBindGroup},
     buffers::Buffers,
     geometries::Geometries,
+    materials::Materials,
     pipelines::Pipelines,
     samplers::Samplers,
     surfaces::Surfaces,
     targets::Targets,
     textures::Textures,
 };
-use crate::{ResourceKey, Resources, camera::Camera, primitive::Primitive, target::RenderTarget};
+use crate::{
+    ResourceKey, Resources, camera::Camera, material::MaterialParameter, primitive::Primitive,
+    target::RenderTarget,
+};
 use std::collections::HashSet;
 
 const GEOMETRY_CHANGED: u8 = 0b01;
@@ -24,10 +28,11 @@ pub struct Renderer<'surf> {
     geometries: Geometries,
     global_bind_group: GlobalBindGroup,
     primitive_bind_group: PrimitiveBindGroup,
-    material_bind_groups: MaterialBindGroups,
+    // material_bind_groups: MaterialBindGroups,
     textures: Textures,
     buffers: Buffers,
     samplers: Samplers,
+    materials: Materials,
 }
 
 impl<'surf> Renderer<'surf> {
@@ -62,10 +67,11 @@ impl<'surf> Renderer<'surf> {
         let targets = Targets::new();
         let global_bind_group = GlobalBindGroup::new(&device);
         let primitive_bind_group = PrimitiveBindGroup::new(&device, 10_000);
-        let material_bind_groups = MaterialBindGroups::new();
+        // let material_bind_groups = MaterialBindGroups::new();
         let textures = Textures::new(&device, &queue);
         let buffers = Buffers::new();
         let samplers = Samplers::new(&device);
+        let materials = Materials::new();
 
         surfaces.add_surface(surface);
 
@@ -79,10 +85,10 @@ impl<'surf> Renderer<'surf> {
             geometries,
             global_bind_group,
             primitive_bind_group,
-            material_bind_groups,
             textures,
             buffers,
             samplers,
+            materials,
         }
     }
 
@@ -110,6 +116,7 @@ impl<'surf> Renderer<'surf> {
             let mut last_material_handle = None;
 
             let mut geometry_handles = HashSet::new();
+            let mut material_handles = HashSet::new();
 
             for primitive in primitives {
                 let geometry_handle = primitive.geometry();
@@ -125,6 +132,7 @@ impl<'surf> Renderer<'surf> {
                 if Some(material_handle.raw()) != last_material_handle {
                     flag |= MATERIAL_CHANGED;
                     last_material_handle = Some(material_handle.raw());
+                    material_handles.insert(primitive.material());
                 }
 
                 change_flags.push(flag);
@@ -143,6 +151,45 @@ impl<'surf> Renderer<'surf> {
             buffer_handles.iter().for_each(|buffer_handle| {
                 self.buffers
                     .prepare_inner_buffer(&self.device, resources, *buffer_handle);
+            });
+
+            // prepare all textures and samplers used by materials
+            material_handles.iter().for_each(|material_handle| {
+                let material = resources.get_material(*material_handle).unwrap();
+
+                material.parameters().iter().for_each(|param| match param {
+                    MaterialParameter::UniformBuffer { .. } => {
+                        // todo: prepare uniform buffer if needed
+                    }
+                    MaterialParameter::Texture {
+                        val: Some(texture_handle),
+                        ..
+                    } => {
+                        self.textures.get_gpu_texture(
+                            &self.device,
+                            &self.queue,
+                            resources.get_texture(texture_handle).unwrap(),
+                            texture_handle,
+                            resources,
+                        );
+                    }
+                    MaterialParameter::Sampler {
+                        val: Some(sampler_box),
+                        ..
+                    } => {
+                        self.samplers.prepare(&self.device, **sampler_box);
+                    }
+                    _ => {}
+                });
+
+                self.materials.prepare(
+                    &self.device,
+                    &self.queue,
+                    resources,
+                    &mut self.textures,
+                    &mut self.samplers,
+                    material_handle,
+                );
             });
 
             change_flags
@@ -186,15 +233,7 @@ impl<'surf> Renderer<'surf> {
 
                     let gpu_geometry = self.geometries.prepare(geometry_handle);
 
-                    let gpu_material_bind_group =
-                        self.material_bind_groups.get_material_bind_group(
-                            &self.device,
-                            &self.queue,
-                            material_handle,
-                            &mut self.textures,
-                            &mut self.samplers,
-                            resources,
-                        );
+                    let internal_material = self.materials.get_internal_material(material_handle);
 
                     let pipeline = self.pipelines.set_pipeline(
                         &self.device,
@@ -203,7 +242,7 @@ impl<'surf> Renderer<'surf> {
                         &[
                             global_bind_group.gpu_layout(),
                             primitive_bind_group.gpu_layout(),
-                            &gpu_material_bind_group.bind_group_layout,
+                            &internal_material.bind_group_layout,
                         ],
                         resources,
                     );
@@ -211,7 +250,7 @@ impl<'surf> Renderer<'surf> {
                     render_pass.set_pipeline(pipeline);
 
                     if material_changed {
-                        render_pass.set_bind_group(2, &gpu_material_bind_group.bind_group, &[]);
+                        render_pass.set_bind_group(2, &internal_material.bind_group, &[]);
                     }
 
                     if geometry_changed {
