@@ -54,16 +54,16 @@ impl MainCamera {
     }
 }
 
-pub struct App<'window> {
+pub struct App {
     pub window: Arc<Window>,
     resources: Resources,
-    renderer: Renderer<'window>,
+    renderer: Renderer,
     screen_render_target: RenderTarget,
     primitives: Vec<Primitive>,
     pub camera: MainCamera,
 }
 
-impl<'window> App<'window> {
+impl App {
     pub async fn new(window: Arc<Window>) -> Self {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: if cfg!(target_arch = "wasm32") {
@@ -80,14 +80,16 @@ impl<'window> App<'window> {
 
         let surface = instance.create_surface(window.clone()).unwrap();
 
+        let renderer = Renderer::new(&instance, &surface).await;
+
         let mut resources = Resources::default();
 
-        let renderer = Renderer::new(&instance, surface).await;
+        let surface_key = resources.insert_surface(surface);
 
         let mut screen_render_target = RenderTargetBuilder::new()
             .name("Screen Render Target")
             .size(size.width, size.height)
-            .attach_surface(0)
+            .attach_surface(surface_key)
             .attach_depth24()
             .build(&mut resources);
         let color_attachment_0 = &mut screen_render_target.color_attachments_mut()[0];

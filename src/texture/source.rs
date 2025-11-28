@@ -1,4 +1,4 @@
-use crate::buffer::BufferSlice;
+use crate::{SurfaceKey, buffer::BufferSlice};
 
 /// Describes the source data or allocation type for a texture.
 ///
@@ -32,7 +32,7 @@ pub enum TextureSource {
         size: u32,
     },
     Surface {
-        surface_id: u32,
+        surface_key: SurfaceKey,
         width: u32,
         height: u32,
     },

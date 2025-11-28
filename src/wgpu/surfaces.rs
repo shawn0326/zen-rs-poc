@@ -1,15 +1,14 @@
 use crate::target::RenderTarget;
 use crate::texture::TextureSource;
-use std::{
-    collections::HashMap,
-    sync::atomic::{AtomicU32, Ordering},
-};
+use crate::{Resources, SurfaceKey};
+use slotmap::SecondaryMap;
+use std::collections::HashMap;
 
-pub(super) struct ActiveSurfaceTextures(HashMap<u32, wgpu::SurfaceTexture>);
+pub(super) struct ActiveSurfaceTextures(HashMap<SurfaceKey, wgpu::SurfaceTexture>);
 
 impl ActiveSurfaceTextures {
-    pub fn get_surface_texture(&self, surface_id: u32) -> &wgpu::SurfaceTexture {
-        self.0.get(&surface_id).unwrap()
+    pub fn get_surface_texture(&self, surface_key: SurfaceKey) -> &wgpu::SurfaceTexture {
+        self.0.get(&surface_key).unwrap()
     }
 
     pub fn present(self) {
@@ -19,34 +18,15 @@ impl ActiveSurfaceTextures {
     }
 }
 
-struct SurfaceInfo<'surf> {
-    surface: wgpu::Surface<'surf>,
-    config: Option<wgpu::SurfaceConfiguration>,
+pub(super) struct Surfaces {
+    map: SecondaryMap<SurfaceKey, wgpu::SurfaceConfiguration>,
 }
 
-pub(super) struct Surfaces<'surf> {
-    map: HashMap<u32, SurfaceInfo<'surf>>,
-    next_id: AtomicU32,
-}
-
-impl<'surf> Surfaces<'surf> {
+impl Surfaces {
     pub fn new() -> Self {
         Self {
-            map: HashMap::new(),
-            next_id: AtomicU32::new(0),
+            map: SecondaryMap::new(),
         }
-    }
-
-    pub fn add_surface(&mut self, surface: wgpu::Surface<'surf>) -> u32 {
-        let surface_id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        self.map.insert(
-            surface_id,
-            SurfaceInfo {
-                surface,
-                config: None,
-            },
-        );
-        surface_id
     }
 
     pub fn get_surface_textures(
@@ -54,45 +34,44 @@ impl<'surf> Surfaces<'surf> {
         adapter: &wgpu::Adapter,
         device: &wgpu::Device,
         target: &RenderTarget,
-        resources: &crate::Resources,
+        resources: &Resources,
     ) -> ActiveSurfaceTextures {
         let mut surface_textures = ActiveSurfaceTextures(HashMap::new());
+
+        let (width, height) = target.size();
 
         for color_attachment in target.color_attachments().iter() {
             let texture_handle = &color_attachment.texture;
             let texture = resources.get_texture(texture_handle).unwrap();
-            if let TextureSource::Surface { surface_id, .. } = texture.source() {
-                let (width, height) = target.size();
-                let surface = self.map.get_mut(&surface_id);
+            if let TextureSource::Surface { surface_key, .. } = texture.source() {
+                let surface = resources.get_surface(*surface_key).unwrap();
+                let internal_surface = self.map.get_mut(*surface_key);
 
-                if let Some(surface_info) = surface {
-                    if let Some(config) = &mut surface_info.config {
-                        if config.width != width || config.height != height {
-                            config.width = width;
-                            config.height = height;
-                            surface_info.surface.configure(&device, &config);
-                        }
-                    } else {
-                        let caps = surface_info.surface.get_capabilities(&adapter);
-                        let config = wgpu::SurfaceConfiguration {
-                            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                            format: caps.formats[0],
-                            width,
-                            height,
-                            present_mode: wgpu::PresentMode::Fifo,
-                            alpha_mode: caps.alpha_modes[0],
-                            view_formats: vec![],
-                            desired_maximum_frame_latency: 2,
-                        };
-                        surface_info.surface.configure(&device, &config);
-                        surface_info.config = Some(config);
+                if let Some(config) = internal_surface {
+                    if config.width != width || config.height != height {
+                        config.width = width;
+                        config.height = height;
+                        surface.configure(&device, &config);
                     }
-
-                    surface_textures.0.insert(
-                        *surface_id,
-                        surface_info.surface.get_current_texture().unwrap(),
-                    );
+                } else {
+                    let caps = surface.get_capabilities(&adapter);
+                    let new_config = wgpu::SurfaceConfiguration {
+                        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                        format: caps.formats[0],
+                        width,
+                        height,
+                        present_mode: wgpu::PresentMode::Fifo,
+                        alpha_mode: caps.alpha_modes[0],
+                        view_formats: vec![],
+                        desired_maximum_frame_latency: 2,
+                    };
+                    surface.configure(&device, &new_config);
+                    self.map.insert(*surface_key, new_config);
                 }
+
+                surface_textures
+                    .0
+                    .insert(*surface_key, surface.get_current_texture().unwrap());
             }
         }
 

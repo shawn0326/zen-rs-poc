@@ -30,8 +30,8 @@ impl Targets {
                 let texture = resources.get_texture(texture_handle).unwrap();
 
                 let gpu_texture = match texture.source() {
-                    TextureSource::Surface { surface_id, .. } => {
-                        &surface_textures.get_surface_texture(*surface_id).texture
+                    TextureSource::Surface { surface_key, .. } => {
+                        &surface_textures.get_surface_texture(*surface_key).texture
                     }
                     _ => {
                         &textures

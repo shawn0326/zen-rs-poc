@@ -1,8 +1,8 @@
 use super::{
     Operations, RenderTarget, RenderTargetColorAttachment, RenderTargetDepthStencilAttachment,
 };
-use crate::Resources;
 use crate::texture::{Texture, TextureFormat, TextureSource};
+use crate::{Resources, SurfaceKey};
 
 pub struct RenderTargetBuilder {
     name: Option<String>,
@@ -34,12 +34,12 @@ impl RenderTargetBuilder {
         self
     }
 
-    pub fn attach_surface(mut self, surface_id: u32) -> Self {
+    pub fn attach_surface(mut self, surface_key: SurfaceKey) -> Self {
         let width = self.width.expect("Width must be set");
         let height = self.height.expect("Height must be set");
         let tex = Texture::new(
             TextureSource::Surface {
-                surface_id,
+                surface_key,
                 width,
                 height,
             },

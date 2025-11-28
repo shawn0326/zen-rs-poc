@@ -17,15 +17,15 @@ use winit::platform::web::WindowAttributesExtWebSys;
 use pollster::block_on;
 
 struct AppHandler {
-    app: Option<App<'static>>,
+    app: Option<App>,
     orbit: Option<OrbitController>,
     #[cfg(target_arch = "wasm32")]
-    proxy: Option<winit::event_loop::EventLoopProxy<App<'static>>>,
+    proxy: Option<winit::event_loop::EventLoopProxy<App>>,
     #[cfg(not(target_arch = "wasm32"))]
     fps_counter: common::FpsCounter,
 }
 
-impl ApplicationHandler<App<'static>> for AppHandler {
+impl ApplicationHandler<App> for AppHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         // Initialize an OrbitController based on the starting camera
         let orbit = {
@@ -75,7 +75,7 @@ impl ApplicationHandler<App<'static>> for AppHandler {
     }
 
     #[allow(unused_mut, unused_variables)]
-    fn user_event(&mut self, _event_loop: &ActiveEventLoop, mut event: App<'static>) {
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, mut event: App) {
         // This is where proxy.send_event() ends up
         #[cfg(target_arch = "wasm32")]
         {

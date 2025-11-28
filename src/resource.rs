@@ -9,6 +9,9 @@ use crate::{
 use pool::{ResourceHandle, ResourcePool};
 
 pub(crate) use pool::{Resource, ResourceKey};
+use slotmap::{SlotMap, new_key_type};
+
+new_key_type! { pub struct SurfaceKey; }
 
 pub type TextureHandle = ResourceHandle<Texture>;
 pub type MaterialHandle = ResourceHandle<Material>;
@@ -17,6 +20,7 @@ pub type BufferHandle = ResourceHandle<Buffer>;
 
 #[derive(Debug, Default)]
 pub struct Resources {
+    pub(crate) surfaces: SlotMap<SurfaceKey, wgpu::Surface<'static>>,
     pub(crate) textures: ResourcePool<Texture>,
     pub(crate) materials: ResourcePool<Material>,
     pub(crate) geometries: ResourcePool<Geometry>,
@@ -26,11 +30,26 @@ pub struct Resources {
 impl Resources {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
+            surfaces: SlotMap::with_key(),
             textures: ResourcePool::with_capacity(capacity),
             materials: ResourcePool::with_capacity(capacity),
             geometries: ResourcePool::with_capacity(capacity),
             buffers: ResourcePool::with_capacity(capacity),
         }
+    }
+}
+
+impl Resources {
+    pub fn insert_surface(&mut self, surface: wgpu::Surface<'static>) -> SurfaceKey {
+        self.surfaces.insert(surface)
+    }
+
+    pub fn get_surface(&self, key: SurfaceKey) -> Option<&wgpu::Surface<'static>> {
+        self.surfaces.get(key)
+    }
+
+    pub fn remove_surface(&mut self, key: SurfaceKey) -> Option<wgpu::Surface<'static>> {
+        self.surfaces.remove(key)
     }
 }
 

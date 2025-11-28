@@ -18,29 +18,28 @@ use std::collections::HashSet;
 const GEOMETRY_CHANGED: u8 = 0b01;
 const MATERIAL_CHANGED: u8 = 0b10;
 
-pub struct Renderer<'surf> {
+pub struct Renderer {
     adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    surfaces: Surfaces<'surf>,
+    surfaces: Surfaces,
     pipelines: Pipelines,
     targets: Targets,
     geometries: Geometries,
     global_bind_group: GlobalBindGroup,
     primitive_bind_group: PrimitiveBindGroup,
-    // material_bind_groups: MaterialBindGroups,
     textures: Textures,
     buffers: Buffers,
     samplers: Samplers,
     materials: Materials,
 }
 
-impl<'surf> Renderer<'surf> {
-    pub async fn new(instance: &wgpu::Instance, surface: wgpu::Surface<'surf>) -> Self {
+impl Renderer {
+    pub async fn new(instance: &wgpu::Instance, surface: &wgpu::Surface<'_>) -> Self {
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
-                compatible_surface: Some(&surface),
+                compatible_surface: Some(surface),
                 force_fallback_adapter: false,
             })
             .await
@@ -61,19 +60,16 @@ impl<'surf> Renderer<'surf> {
 
         println!("{:?}", surface.get_capabilities(&adapter));
 
-        let mut surfaces = Surfaces::new();
+        let surfaces = Surfaces::new();
         let geometries = Geometries::new();
         let pipelines = Pipelines::new(surface.get_capabilities(&adapter).formats[0]);
         let targets = Targets::new();
         let global_bind_group = GlobalBindGroup::new(&device);
         let primitive_bind_group = PrimitiveBindGroup::new(&device, 10_000);
-        // let material_bind_groups = MaterialBindGroups::new();
         let textures = Textures::new(&device, &queue);
         let buffers = Buffers::new();
         let samplers = Samplers::new(&device);
         let materials = Materials::new();
-
-        surfaces.add_surface(surface);
 
         Self {
             adapter,
