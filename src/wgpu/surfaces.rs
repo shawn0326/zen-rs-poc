@@ -55,7 +55,7 @@ impl Surfaces {
                     }
                 } else {
                     let caps = surface.get_capabilities(&adapter);
-                    let new_config = wgpu::SurfaceConfiguration {
+                    let config = wgpu::SurfaceConfiguration {
                         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                         format: caps.formats[0],
                         width,
@@ -65,8 +65,8 @@ impl Surfaces {
                         view_formats: vec![],
                         desired_maximum_frame_latency: 2,
                     };
-                    surface.configure(&device, &new_config);
-                    self.map.insert(*surface_key, new_config);
+                    surface.configure(&device, &config);
+                    self.map.insert(*surface_key, config);
                 }
 
                 surface_textures
