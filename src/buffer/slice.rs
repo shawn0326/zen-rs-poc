@@ -14,7 +14,7 @@ impl BufferSlice {
         Self {
             buffer: buffer_handle,
             offset: 0,
-            size: buffer.byte_length(),
+            size: buffer.byte_len(),
         }
     }
 }

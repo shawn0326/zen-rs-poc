@@ -227,6 +227,22 @@ impl Material {
     }
 }
 
+impl Material {
+    pub(crate) fn textures(&self) -> impl Iterator<Item = &TextureHandle> {
+        self.parameters.iter().filter_map(|param| match param {
+            MaterialParameter::Texture { val, .. } => val.as_ref(),
+            _ => None,
+        })
+    }
+
+    pub(crate) fn samplers(&self) -> impl Iterator<Item = &Sampler> {
+        self.parameters.iter().filter_map(|param| match param {
+            MaterialParameter::Sampler { val, .. } => val.as_deref(),
+            _ => None,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

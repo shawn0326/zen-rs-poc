@@ -23,13 +23,13 @@ impl Textures {
         &self.default_gpu_texture
     }
 
-    pub fn get_gpu_texture(
+    pub fn prepare(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
+        resources: &Resources,
         texture: &Texture,
         texture_handle: &TextureHandle,
-        resources: &Resources,
     ) -> &GpuTexture {
         match texture.source() {
             TextureSource::D2 {

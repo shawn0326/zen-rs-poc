@@ -1,6 +1,6 @@
 mod slice;
 
-use crate::{BufferHandle, Resource, Resources};
+use crate::{BufferHandle, DirtyVersion, Resource, Resources};
 use std::fmt;
 use wgpu::BufferUsages;
 
@@ -8,8 +8,9 @@ pub use slice::BufferSlice;
 
 #[derive(Clone)]
 pub struct Buffer {
-    raw: Vec<u8>,
+    raw: Box<[u8]>,
     usage: BufferUsages,
+    ver: DirtyVersion,
 }
 
 impl fmt::Debug for Buffer {
@@ -40,56 +41,44 @@ impl Buffer {
 
 impl Buffer {
     #[inline]
-    pub fn new(vec: Vec<u8>, usage: BufferUsages) -> Self {
-        Self { raw: vec, usage }
-    }
-
-    #[inline]
-    pub fn for_vertex(vec: Vec<u8>) -> Self {
+    pub fn new(raw: impl Into<Box<[u8]>>, usage: BufferUsages) -> Self {
         Self {
-            raw: vec,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            raw: raw.into(),
+            usage,
+            ver: DirtyVersion::new(),
         }
     }
 
     #[inline]
-    pub fn for_index(vec: Vec<u8>) -> Self {
-        Self {
-            raw: vec,
-            usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
-        }
+    pub fn for_vertex(raw: impl Into<Box<[u8]>>) -> Self {
+        Self::new(raw, BufferUsages::VERTEX | BufferUsages::COPY_DST)
     }
 
     #[inline]
-    pub fn for_copy(vec: Vec<u8>) -> Self {
-        Self {
-            raw: vec,
-            usage: BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-        }
+    pub fn for_index(raw: impl Into<Box<[u8]>>) -> Self {
+        Self::new(raw, BufferUsages::INDEX | BufferUsages::COPY_DST)
+    }
+
+    #[inline]
+    pub fn for_copy(raw: impl Into<Box<[u8]>>) -> Self {
+        Self::new(raw, BufferUsages::COPY_SRC | BufferUsages::COPY_DST)
     }
 }
 
 impl Buffer {
     #[inline]
-    pub fn set_raw(&mut self, raw: Vec<u8>) -> &mut Self {
-        self.raw = raw;
-        self
-    }
-
-    #[inline]
-    pub fn raw(&self) -> &Vec<u8> {
+    pub fn raw(&self) -> &[u8] {
         &self.raw
     }
 
     #[inline]
-    pub fn raw_mut(&mut self) -> &mut Vec<u8> {
+    pub fn raw_mut(&mut self) -> &mut [u8] {
         &mut self.raw
     }
 
     #[inline]
-    pub fn set_usage(&mut self, usage: BufferUsages) -> &mut Self {
-        self.usage = usage;
-        self
+    pub fn mark_dirty(&mut self) {
+        self.ver.bump();
     }
 
     #[inline]
@@ -98,7 +87,14 @@ impl Buffer {
     }
 
     #[inline]
-    pub fn byte_length(&self) -> usize {
+    pub fn byte_len(&self) -> usize {
         self.raw.len()
+    }
+}
+
+impl Buffer {
+    #[inline]
+    pub(crate) fn ver(&self) -> &DirtyVersion {
+        &self.ver
     }
 }

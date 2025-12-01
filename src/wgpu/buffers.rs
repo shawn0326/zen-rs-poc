@@ -2,18 +2,19 @@ use crate::{BufferHandle, GeometryHandle, ResourceKey, Resources, Symbol};
 use slotmap::SecondaryMap;
 use wgpu::util::DeviceExt;
 
-pub struct InnerBuffer {
-    wgpu_buffer: wgpu::Buffer,
+pub struct InternalBuffer {
+    buffer: wgpu::Buffer,
+    ver: u64,
 }
 
-impl InnerBuffer {
+impl InternalBuffer {
     pub fn wgpu_buffer(&self) -> &wgpu::Buffer {
-        &self.wgpu_buffer
+        &self.buffer
     }
 }
 
 pub struct Buffers {
-    pool: SecondaryMap<ResourceKey, InnerBuffer>,
+    pool: SecondaryMap<ResourceKey, InternalBuffer>,
 }
 
 impl Buffers {
@@ -23,12 +24,13 @@ impl Buffers {
         }
     }
 
-    pub fn prepare_inner_buffer(
+    pub fn prepare(
         &mut self,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         resources: &Resources,
         handle: &BufferHandle,
-    ) -> &InnerBuffer {
+    ) -> &InternalBuffer {
         let entry = self
             .pool
             .entry(handle.raw())
@@ -38,21 +40,31 @@ impl Buffers {
             .get_buffer(handle)
             .expect("BufferHandle has been removed from resources.");
 
-        entry.or_insert_with(|| {
+        let internal_buffer = entry.or_insert_with(|| {
             let wgpu_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: None,
                 contents: buffer.raw(),
                 usage: buffer.usage(),
             });
-            InnerBuffer { wgpu_buffer }
-        })
+            InternalBuffer {
+                buffer: wgpu_buffer,
+                ver: buffer.ver().as_u64(),
+            }
+        });
+
+        if internal_buffer.ver != buffer.ver().as_u64() {
+            queue.write_buffer(&internal_buffer.buffer, 0, buffer.raw());
+            internal_buffer.ver = buffer.ver().as_u64();
+        }
+
+        internal_buffer
     }
 
-    pub fn get_inner_buffer(&self, handle: &BufferHandle) -> &InnerBuffer {
+    pub fn get_internal_buffer(&self, handle: &BufferHandle) -> &InternalBuffer {
         self.pool.get(handle.raw()).unwrap()
     }
 
-    pub fn destroy_inner_buffer(&mut self, key: ResourceKey) {
+    pub fn destroy_internal_buffer(&mut self, key: ResourceKey) {
         self.pool.remove(key);
     }
 
@@ -79,11 +91,11 @@ impl Buffers {
 
             let buffer_handle = &attr.vertex_buffer.buffer_slice.buffer;
 
-            let inner_buffer = self.get_inner_buffer(buffer_handle);
+            let internal_buffer = self.get_internal_buffer(buffer_handle);
 
             render_pass.set_vertex_buffer(
                 location,
-                inner_buffer
+                internal_buffer
                     .wgpu_buffer()
                     .slice(attr.vertex_buffer.buffer_slice.range_u64()),
             );
@@ -94,10 +106,10 @@ impl Buffers {
         if let Some(index_buffer) = geometry.indices() {
             let buffer_handle = &index_buffer.buffer_slice.buffer;
 
-            let inner_buffer = self.get_inner_buffer(buffer_handle);
+            let internal_buffer = self.get_internal_buffer(buffer_handle);
 
             render_pass.set_index_buffer(
-                inner_buffer
+                internal_buffer
                     .wgpu_buffer()
                     .slice(index_buffer.buffer_slice.range_u64()),
                 index_buffer.format,

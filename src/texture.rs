@@ -4,7 +4,7 @@ mod source;
 pub use format::TextureFormat;
 pub use source::TextureSource;
 
-use crate::{Resource, Resources, TextureHandle};
+use crate::{BufferHandle, Resource, Resources, TextureHandle};
 
 /// Represents a CPU-side texture resource.
 ///
@@ -86,5 +86,18 @@ impl Texture {
     #[inline]
     pub fn format(&self) -> TextureFormat {
         self.format
+    }
+}
+
+impl Texture {
+    #[inline]
+    pub(crate) fn buffer(&self) -> Option<&BufferHandle> {
+        match &self.source {
+            TextureSource::D1 { buffer_slice, .. } => Some(&buffer_slice.buffer),
+            TextureSource::D2 { buffer_slice, .. } => Some(&buffer_slice.buffer),
+            TextureSource::D3 { buffer_slice, .. } => Some(&buffer_slice.buffer),
+            TextureSource::Cube { buffer_slice, .. } => Some(&buffer_slice.buffer),
+            _ => None,
+        }
     }
 }

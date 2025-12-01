@@ -9,10 +9,7 @@ use super::{
     targets::Targets,
     textures::Textures,
 };
-use crate::{
-    ResourceKey, Resources, camera::Camera, material::MaterialParameter, primitive::Primitive,
-    target::RenderTarget,
-};
+use crate::{ResourceKey, Resources, camera::Camera, primitive::Primitive, target::RenderTarget};
 use std::collections::HashSet;
 
 const GEOMETRY_CHANGED: u8 = 0b01;
@@ -134,59 +131,62 @@ impl Renderer {
                 change_flags.push(flag);
             }
 
-            let buffer_handles = geometry_handles
+            let geometris = geometry_handles
                 .iter()
-                .flat_map(|geometry_handle| {
-                    resources
-                        .get_geometry(*geometry_handle)
-                        .unwrap()
-                        .buffer_handles()
-                })
+                .map(|handle| resources.get_geometry(handle).unwrap())
+                .collect::<Vec<_>>();
+
+            let materials = material_handles
+                .iter()
+                .map(|handle| resources.get_material(handle).unwrap())
+                .collect::<Vec<_>>();
+
+            let texture_handles = materials
+                .iter()
+                .flat_map(|material| material.textures())
+                .collect::<Vec<_>>();
+
+            let textures = texture_handles
+                .iter()
+                .filter_map(|handle| resources.get_texture(handle))
+                .collect::<Vec<_>>();
+
+            let buffer_handles = geometris
+                .iter()
+                .flat_map(|geometry| geometry.buffers())
+                .chain(textures.iter().filter_map(|texture| texture.buffer()))
                 .collect::<HashSet<_>>();
 
             buffer_handles.iter().for_each(|buffer_handle| {
                 self.buffers
-                    .prepare_inner_buffer(&self.device, resources, *buffer_handle);
+                    .prepare(&self.device, &self.queue, resources, buffer_handle);
             });
 
-            // prepare all textures and samplers used by materials
-            material_handles.iter().for_each(|material_handle| {
-                let material = resources.get_material(*material_handle).unwrap();
-
-                material.parameters().iter().for_each(|param| match param {
-                    MaterialParameter::UniformBuffer { .. } => {
-                        // todo: prepare uniform buffer if needed
-                    }
-                    MaterialParameter::Texture {
-                        val: Some(texture_handle),
-                        ..
-                    } => {
-                        self.textures.get_gpu_texture(
-                            &self.device,
-                            &self.queue,
-                            resources.get_texture(texture_handle).unwrap(),
-                            texture_handle,
-                            resources,
-                        );
-                    }
-                    MaterialParameter::Sampler {
-                        val: Some(sampler_box),
-                        ..
-                    } => {
-                        self.samplers.prepare(&self.device, **sampler_box);
-                    }
-                    _ => {}
+            texture_handles
+                .iter()
+                .zip(textures.iter())
+                .for_each(|(handle, texture)| {
+                    self.textures
+                        .prepare(&self.device, &self.queue, resources, texture, handle);
                 });
 
-                self.materials.prepare(
-                    &self.device,
-                    &self.queue,
-                    resources,
-                    &mut self.textures,
-                    &mut self.samplers,
-                    material_handle,
-                );
-            });
+            material_handles
+                .iter()
+                .zip(materials.iter())
+                .for_each(|(handle, material)| {
+                    material.samplers().for_each(|sampler| {
+                        self.samplers.prepare(&self.device, *sampler);
+                    });
+
+                    self.materials.prepare(
+                        &self.device,
+                        &self.queue,
+                        resources,
+                        &self.textures,
+                        &self.samplers,
+                        handle,
+                    );
+                });
 
             change_flags
         };
@@ -298,7 +298,7 @@ impl Renderer {
     }
 
     pub fn destroy_buffer_gpu(&mut self, key: ResourceKey) {
-        self.buffers.destroy_inner_buffer(key);
+        self.buffers.destroy_internal_buffer(key);
     }
 
     pub fn destroy_garbage_gpu(&mut self, resources: &Resources) {

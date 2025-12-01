@@ -252,8 +252,8 @@ impl Materials {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         resources: &Resources,
-        textures: &mut Textures,
-        samplers: &mut Samplers,
+        textures: &Textures,
+        samplers: &Samplers,
         material_handle: &MaterialHandle,
     ) -> &InternalMaterial {
         let entry = self
