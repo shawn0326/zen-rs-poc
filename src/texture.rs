@@ -1,7 +1,5 @@
-mod format;
 mod source;
 
-pub use format::TextureFormat;
 pub use source::TextureSource;
 
 use crate::{BufferHandle, Resource, Resources, TextureHandle};
@@ -18,7 +16,7 @@ use crate::{BufferHandle, Resource, Resources, TextureHandle};
 #[derive(Clone, Debug)]
 pub struct Texture {
     source: TextureSource,
-    format: TextureFormat,
+    format: wgpu::TextureFormat,
 }
 
 impl Resource for Texture {}
@@ -27,7 +25,7 @@ impl Default for Texture {
     fn default() -> Self {
         Self {
             source: TextureSource::default(),
-            format: TextureFormat::Rgba8UnormSrgb, // default srgb format
+            format: wgpu::TextureFormat::Rgba8UnormSrgb, // default srgb format
         }
     }
 }
@@ -42,7 +40,7 @@ impl Texture {
 impl Texture {
     /// Creates a new texture with the given source and format.
     #[inline]
-    pub fn new(source: TextureSource, format: TextureFormat) -> Self {
+    pub fn new(source: TextureSource, format: wgpu::TextureFormat) -> Self {
         Self { source, format }
     }
 
@@ -55,7 +53,7 @@ impl Texture {
 
     /// Sets the texture format in builder style.
     #[inline]
-    pub fn with_format(mut self, format: TextureFormat) -> Self {
+    pub fn with_format(mut self, format: wgpu::TextureFormat) -> Self {
         self.format = format;
         self
     }
@@ -77,14 +75,14 @@ impl Texture {
 
     /// Sets the texture format.
     #[inline]
-    pub fn set_format(&mut self, format: TextureFormat) -> &mut Self {
+    pub fn set_format(&mut self, format: wgpu::TextureFormat) -> &mut Self {
         self.format = format;
         self
     }
 
     /// Returns the texture format.
     #[inline]
-    pub fn format(&self) -> TextureFormat {
+    pub fn format(&self) -> wgpu::TextureFormat {
         self.format
     }
 }

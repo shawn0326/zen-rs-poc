@@ -128,12 +128,11 @@ mod tests {
     #[test]
     fn test_texture_pool() {
         let mut resources = Resources::default();
-        let texture = Texture::default().with_format(TextureFormat::Rgba8UnormSrgb);
+        let texture = Texture::default().with_format(wgpu::TextureFormat::Rgba8UnormSrgb);
         let handle = resources.insert_texture(texture);
 
         let retrieved = resources.get_texture(&handle).unwrap();
-        assert_eq!(retrieved.format(), TextureFormat::Rgba8UnormSrgb);
-
+        assert_eq!(retrieved.format(), wgpu::TextureFormat::Rgba8UnormSrgb);
         let removed = resources.remove_texture(handle);
 
         assert!(removed.is_some());

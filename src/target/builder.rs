@@ -1,7 +1,7 @@
 use super::{
     Operations, RenderTarget, RenderTargetColorAttachment, RenderTargetDepthStencilAttachment,
 };
-use crate::texture::{Texture, TextureFormat, TextureSource};
+use crate::texture::{Texture, TextureSource};
 use crate::{Resources, SurfaceKey};
 
 pub struct RenderTargetBuilder {
@@ -43,13 +43,13 @@ impl RenderTargetBuilder {
                 width,
                 height,
             },
-            TextureFormat::Rgba8UnormSrgb,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
         );
         self.color_textures.push(tex);
         self
     }
 
-    pub fn attach_color(mut self, source: TextureSource, format: TextureFormat) -> Self {
+    pub fn attach_color(mut self, source: TextureSource, format: wgpu::TextureFormat) -> Self {
         let tex = Texture::new(source, format);
         self.color_textures.push(tex);
         self
@@ -60,7 +60,7 @@ impl RenderTargetBuilder {
         let height = self.height.expect("Height must be set");
         let tex = Texture::new(
             TextureSource::Render { width, height },
-            TextureFormat::Depth24Plus,
+            wgpu::TextureFormat::Depth24Plus,
         );
         self.depth_stencil_texture = Some(tex);
         self

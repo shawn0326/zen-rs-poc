@@ -1,4 +1,4 @@
-use crate::texture::{Texture, TextureFormat, TextureSource};
+use crate::texture::{Texture, TextureSource};
 use crate::{ResourceKey, Resources, TextureHandle};
 use slotmap::SecondaryMap;
 
@@ -9,7 +9,7 @@ pub(super) struct Textures {
 
 impl Textures {
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
-        let default_gpu_texture = GpuTexture::new(device, (1, 1), TextureFormat::Rgba8Unorm);
+        let default_gpu_texture = GpuTexture::new(device, (1, 1), wgpu::TextureFormat::Rgba8Unorm);
 
         default_gpu_texture.upload(queue, &vec![255, 255, 255, 255], 1, 1);
 
@@ -82,7 +82,11 @@ pub(super) struct GpuTexture {
 }
 
 impl GpuTexture {
-    pub fn new(device: &wgpu::Device, (width, height): (u32, u32), format: TextureFormat) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        (width, height): (u32, u32),
+        format: wgpu::TextureFormat,
+    ) -> Self {
         let size = wgpu::Extent3d {
             width,
             height,
@@ -95,7 +99,7 @@ impl GpuTexture {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: texture_format_to_wgpu_format(format),
+            format,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_DST,
@@ -130,16 +134,5 @@ impl GpuTexture {
             self.descriptor.size,
         );
         &self
-    }
-}
-
-fn texture_format_to_wgpu_format(format: TextureFormat) -> wgpu::TextureFormat {
-    match format {
-        TextureFormat::Bgra8UnormSrgb => wgpu::TextureFormat::Bgra8UnormSrgb,
-        TextureFormat::Rgba8UnormSrgb => wgpu::TextureFormat::Rgba8UnormSrgb,
-        TextureFormat::Bgra8Unorm => wgpu::TextureFormat::Bgra8Unorm,
-        TextureFormat::Rgba8Unorm => wgpu::TextureFormat::Rgba8Unorm,
-        TextureFormat::Depth24Plus => wgpu::TextureFormat::Depth24Plus,
-        TextureFormat::Depth24PlusStencil8 => wgpu::TextureFormat::Depth24PlusStencil8,
     }
 }
