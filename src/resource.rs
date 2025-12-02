@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn test_texture_pool() {
         let mut resources = Resources::default();
-        let texture = Texture::default().with_format(wgpu::TextureFormat::Rgba8UnormSrgb);
+        let texture = Texture::default();
         let handle = resources.insert_texture(texture);
 
         let retrieved = resources.get_texture(&handle).unwrap();

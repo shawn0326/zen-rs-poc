@@ -11,7 +11,7 @@ use zen_rs_poc::{
     primitive::Primitive,
     symbol,
     target::{LoadOp, RenderTarget, RenderTargetBuilder},
-    texture::{Texture, TextureSource},
+    texture::Texture,
     wgpu::Renderer,
 };
 
@@ -117,11 +117,11 @@ impl App {
         let diffuse_bytes = include_bytes!("../../assets/textures/logo.jpg");
         let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
         let diffuse_dimensions = diffuse_image.dimensions();
-        let texture = Texture::default().with_source(TextureSource::D2 {
-            bytes: diffuse_image.to_rgba8().into_raw().into_boxed_slice(),
-            width: diffuse_dimensions.0,
-            height: diffuse_dimensions.1,
-        });
+        let texture = Texture::d2_texture(
+            diffuse_image.to_rgba8().into_raw(),
+            diffuse_dimensions.0,
+            diffuse_dimensions.1,
+        );
         let texture_handle = app.resources.insert_texture(texture);
 
         let geometry1 = Geometry::create_unit_cube(&mut app.resources);

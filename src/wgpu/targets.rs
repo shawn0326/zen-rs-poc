@@ -1,7 +1,7 @@
 use super::textures::Textures;
 use crate::{
     target::{LoadOp, RenderTarget, StoreOp},
-    texture::TextureSource,
+    texture::TextureKind,
     wgpu::surfaces::ActiveSurfaceTextures,
 };
 
@@ -29,8 +29,8 @@ impl Targets {
                 let texture_handle = &color_attachment.texture;
                 let texture = resources.get_texture(texture_handle).unwrap();
 
-                let gpu_texture = match texture.source() {
-                    TextureSource::Surface { surface_key, .. } => {
+                let gpu_texture = match texture.kind() {
+                    TextureKind::Surface { surface_key, .. } => {
                         &surface_textures.get_surface_texture(*surface_key).texture
                     }
                     _ => {

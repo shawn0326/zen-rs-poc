@@ -1,7 +1,7 @@
 use super::{
     Operations, RenderTarget, RenderTargetColorAttachment, RenderTargetDepthStencilAttachment,
 };
-use crate::texture::{Texture, TextureSource};
+use crate::texture::{Texture, TextureKind};
 use crate::{Resources, SurfaceKey};
 
 pub struct RenderTargetBuilder {
@@ -37,20 +37,19 @@ impl RenderTargetBuilder {
     pub fn attach_surface(mut self, surface_key: SurfaceKey) -> Self {
         let width = self.width.expect("Width must be set");
         let height = self.height.expect("Height must be set");
-        let tex = Texture::new(
-            TextureSource::Surface {
-                surface_key,
-                width,
-                height,
-            },
-            wgpu::TextureFormat::Rgba8UnormSrgb,
-        );
+        let tex = Texture::surface_texture(surface_key, width, height);
         self.color_textures.push(tex);
         self
     }
 
-    pub fn attach_color(mut self, source: TextureSource, format: wgpu::TextureFormat) -> Self {
-        let tex = Texture::new(source, format);
+    pub fn attach_color(mut self, kind: TextureKind, format: wgpu::TextureFormat) -> Self {
+        let tex = Texture::new(
+            kind,
+            format,
+            wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
+        );
         self.color_textures.push(tex);
         self
     }
@@ -59,8 +58,9 @@ impl RenderTargetBuilder {
         let width = self.width.expect("Width must be set");
         let height = self.height.expect("Height must be set");
         let tex = Texture::new(
-            TextureSource::Render { width, height },
+            TextureKind::Render { width, height },
             wgpu::TextureFormat::Depth24Plus,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         );
         self.depth_stencil_texture = Some(tex);
         self

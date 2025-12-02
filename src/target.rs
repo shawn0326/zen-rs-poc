@@ -55,7 +55,7 @@ impl RenderTarget {
             resources
                 .get_texture_mut(&depth_stencil_attachment.texture)
                 .unwrap()
-                .set_source(TextureSource::Render {
+                .set_kind(TextureKind::Render {
                     width: new_width,
                     height: new_height,
                 });

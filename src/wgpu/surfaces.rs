@@ -1,5 +1,5 @@
 use crate::target::RenderTarget;
-use crate::texture::TextureSource;
+use crate::texture::TextureKind;
 use crate::{Resources, SurfaceKey};
 use slotmap::SecondaryMap;
 use std::collections::HashMap;
@@ -43,7 +43,7 @@ impl Surfaces {
         for color_attachment in target.color_attachments().iter() {
             let texture_handle = &color_attachment.texture;
             let texture = resources.get_texture(texture_handle).unwrap();
-            if let TextureSource::Surface { surface_key, .. } = texture.source() {
+            if let TextureKind::Surface { surface_key, .. } = texture.kind() {
                 let surface = resources.get_surface(*surface_key).unwrap();
                 let internal_surface = self.map.get_mut(*surface_key);
 

@@ -1,4 +1,4 @@
-use crate::texture::{Texture, TextureSource};
+use crate::texture::{Texture, TextureKind};
 use crate::{ResourceKey, TextureHandle};
 use slotmap::SecondaryMap;
 
@@ -35,20 +35,20 @@ impl Textures {
         texture: &Texture,
         texture_handle: &TextureHandle,
     ) -> &GpuTexture {
-        match texture.source() {
-            TextureSource::D2 {
-                bytes,
+        match texture.kind() {
+            TextureKind::D2 {
+                data,
                 width,
                 height,
             } => {
                 let create_gpu_texture = || {
                     let gpu_texture = GpuTexture::new(
                         device,
-                        texture.source().size(),
+                        texture.kind().dimensions(),
                         texture.format(),
                         texture.usage(),
                     );
-                    gpu_texture.upload(queue, bytes, *width, *height);
+                    gpu_texture.upload(queue, data.bytes(), *width, *height);
                     gpu_texture
                 };
 
@@ -57,7 +57,7 @@ impl Textures {
                     None => panic!("Texture source is Render, but has been removed from pool."),
                 }
             }
-            TextureSource::Render { width, height } => {
+            TextureKind::Render { width, height } => {
                 if let Some(existing) = self.pool.get(texture_handle.raw()) {
                     let desc_size = existing.descriptor.size;
                     if desc_size.width != *width || desc_size.height != *height {
@@ -69,7 +69,7 @@ impl Textures {
                     Some(entry) => entry.or_insert_with(|| {
                         GpuTexture::new(
                             device,
-                            texture.source().size(),
+                            texture.kind().dimensions(),
                             texture.format(),
                             texture.usage(),
                         )

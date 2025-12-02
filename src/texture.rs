@@ -1,23 +1,17 @@
-mod source;
+mod data;
+mod kind;
 
-pub use source::TextureSource;
+pub use data::TextureData;
+pub use kind::TextureKind;
 
-use crate::{Resource, Resources, TextureHandle};
+use crate::{DirtyVersion, Resource, Resources, SurfaceKey, TextureHandle};
 
-/// Represents a CPU-side texture resource.
-///
-/// Stores texture source data and format information.
-/// Provides constructors, builder-style configuration, and getter/setter methods.
-///
-/// Typical usage:
-/// - Create a Texture with `Texture::new` or `Texture::default`.
-/// - Configure with `with_source` / `with_format` or setters.
-/// - Insert into a resource pool with `into_handle`.
 #[derive(Clone, Debug)]
 pub struct Texture {
-    source: TextureSource,
+    kind: TextureKind,
     format: wgpu::TextureFormat,
     usage: wgpu::TextureUsages,
+    version: DirtyVersion,
 }
 
 impl Resource for Texture {}
@@ -25,75 +19,106 @@ impl Resource for Texture {}
 impl Default for Texture {
     fn default() -> Self {
         Self {
-            source: TextureSource::default(),
-            format: wgpu::TextureFormat::Rgba8UnormSrgb, // default srgb format
+            kind: TextureKind::default(),
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_DST,
+            version: DirtyVersion::new(),
         }
     }
 }
 
 impl Texture {
-    /// Consumes the texture and inserts it into the resource pool, returning a handle.
     pub fn into_handle(self, resources: &mut Resources) -> TextureHandle {
         resources.insert_texture(self)
     }
 }
 
 impl Texture {
-    /// Creates a new texture with the given source and format.
     #[inline]
-    pub fn new(source: TextureSource, format: wgpu::TextureFormat) -> Self {
+    pub fn new(kind: TextureKind, format: wgpu::TextureFormat, usage: wgpu::TextureUsages) -> Self {
         Self {
-            source,
+            kind,
             format,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::COPY_DST,
+            usage,
+            version: DirtyVersion::new(),
         }
     }
 
-    /// Sets the texture source in builder style.
-    #[inline]
-    pub fn with_source(mut self, source: TextureSource) -> Self {
-        self.source = source;
-        self
+    pub fn d2_texture(data: impl Into<Box<[u8]>>, width: u32, height: u32) -> Self {
+        Self {
+            kind: TextureKind::D2 {
+                data: TextureData::from_bytes(data),
+                width,
+                height,
+            },
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            version: DirtyVersion::new(),
+        }
     }
 
-    /// Sets the texture format in builder style.
-    #[inline]
-    pub fn with_format(mut self, format: wgpu::TextureFormat) -> Self {
-        self.format = format;
-        self
+    pub fn surface_texture(surface_key: SurfaceKey, width: u32, height: u32) -> Self {
+        Self {
+            kind: TextureKind::Surface {
+                surface_key,
+                width,
+                height,
+            },
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            version: DirtyVersion::new(),
+        }
+    }
+
+    pub fn render_texture(width: u32, height: u32) -> Self {
+        Self {
+            kind: TextureKind::Render { width, height },
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_SRC,
+            version: DirtyVersion::new(),
+        }
     }
 }
 
 impl Texture {
-    /// Sets the texture source.
-    #[inline]
-    pub fn set_source(&mut self, source: TextureSource) -> &mut Self {
-        self.source = source;
+    pub fn set_kind(&mut self, kind: TextureKind) -> &mut Self {
+        if !self.kind.same_features(&kind) {
+            self.version.bump();
+        }
+
+        self.kind = kind;
+
         self
     }
 
-    /// Returns a reference to the texture source.
     #[inline]
-    pub fn source(&self) -> &TextureSource {
-        &self.source
+    pub fn kind(&self) -> &TextureKind {
+        &self.kind
     }
 
-    /// Sets the texture format.
-    #[inline]
     pub fn set_format(&mut self, format: wgpu::TextureFormat) -> &mut Self {
-        self.format = format;
+        if self.format != format {
+            self.version.bump();
+            self.format = format;
+        }
         self
     }
 
-    /// Returns the texture format.
     #[inline]
     pub fn format(&self) -> wgpu::TextureFormat {
         self.format
+    }
+
+    pub fn set_usage(&mut self, usage: wgpu::TextureUsages) -> &mut Self {
+        if self.usage != usage {
+            self.version.bump();
+            self.usage = usage;
+        }
+        self
     }
 
     #[inline]
