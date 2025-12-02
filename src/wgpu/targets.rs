@@ -35,7 +35,7 @@ impl Targets {
                     }
                     _ => {
                         &textures
-                            .prepare(device, queue, resources, &*texture, texture_handle)
+                            .prepare(device, queue, &*texture, texture_handle)
                             .texture
                     }
                 };
@@ -76,8 +76,7 @@ impl Targets {
             Some(depth_stencil_attachment) => {
                 let texture_handle = &depth_stencil_attachment.texture;
                 let texture = resources.get_texture(texture_handle).unwrap();
-                let gpu_texture =
-                    textures.prepare(device, queue, resources, &*texture, texture_handle);
+                let gpu_texture = textures.prepare(device, queue, &*texture, texture_handle);
                 Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &gpu_texture
                         .texture

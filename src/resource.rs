@@ -1,11 +1,6 @@
 mod pool;
 
-use crate::{
-    buffer::{Buffer, BufferSlice},
-    geometry::Geometry,
-    material::Material,
-    texture::Texture,
-};
+use crate::{buffer::Buffer, geometry::Geometry, material::Material, texture::Texture};
 use pool::{ResourceHandle, ResourcePool};
 
 pub(crate) use pool::{Resource, ResourceKey};
@@ -113,12 +108,12 @@ impl Resources {
     }
 }
 
-impl Resources {
-    pub(crate) fn get_buffer_slice(&self, buffer_slice: &BufferSlice) -> Option<&[u8]> {
-        let buffer = self.get_buffer(&buffer_slice.buffer)?;
-        buffer.raw().get(buffer_slice.range())
-    }
-}
+// impl Resources {
+//     pub(crate) fn get_buffer_slice(&self, buffer_slice: &BufferSlice) -> Option<&[u8]> {
+//         let buffer = self.get_buffer(&buffer_slice.buffer)?;
+//         buffer.raw().get(buffer_slice.range())
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

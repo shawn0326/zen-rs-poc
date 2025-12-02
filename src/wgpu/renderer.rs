@@ -154,7 +154,6 @@ impl Renderer {
             let buffer_handles = geometris
                 .iter()
                 .flat_map(|geometry| geometry.buffers())
-                .chain(textures.iter().filter_map(|texture| texture.buffer()))
                 .collect::<HashSet<_>>();
 
             buffer_handles.iter().for_each(|buffer_handle| {
@@ -167,7 +166,7 @@ impl Renderer {
                 .zip(textures.iter())
                 .for_each(|(handle, texture)| {
                     self.textures
-                        .prepare(&self.device, &self.queue, resources, texture, handle);
+                        .prepare(&self.device, &self.queue, texture, handle);
                 });
 
             material_handles

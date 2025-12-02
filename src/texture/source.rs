@@ -1,34 +1,24 @@
-use crate::{SurfaceKey, buffer::BufferSlice};
+use crate::SurfaceKey;
 
-/// Describes the source data or allocation type for a texture.
-///
-/// Variants cover common texture types:
-/// - `D1`, `D2`, `D3`: 1D, 2D, and 3D textures with raw data and dimensions.
-/// - `Cube`: Cubemap texture with raw data and size.
-/// - `Surface`: Texture sourced from a window surface (for swapchain).
-/// - `Render`: Texture allocated for GPU rendering (no initial data).
-/// - `Empty`: Uninitialized or placeholder texture.
-///
-/// Used to specify how a texture should be created or uploaded.
 #[derive(Clone, Debug)]
 pub enum TextureSource {
     D1 {
-        buffer_slice: BufferSlice,
+        bytes: Box<[u8]>,
         width: u32,
     },
     D2 {
-        buffer_slice: BufferSlice,
+        bytes: Box<[u8]>,
         width: u32,
         height: u32,
     },
     D3 {
-        buffer_slice: BufferSlice,
+        bytes: Box<[u8]>,
         width: u32,
         height: u32,
         depth: u32,
     },
     Cube {
-        buffer_slice: BufferSlice,
+        bytes: Box<[u8]>,
         size: u32,
     },
     Surface {
@@ -46,5 +36,25 @@ pub enum TextureSource {
 impl Default for TextureSource {
     fn default() -> Self {
         TextureSource::Empty
+    }
+}
+
+impl TextureSource {
+    pub fn size(&self) -> (u32, u32, u32) {
+        use TextureSource::*;
+        match self {
+            D1 { width, .. } => (*width, 1, 1),
+            D2 { width, height, .. } => (*width, *height, 1),
+            D3 {
+                width,
+                height,
+                depth,
+                ..
+            } => (*width, *height, *depth),
+            Cube { size, .. } => (*size, *size, 1),
+            Surface { width, height, .. } => (*width, *height, 1),
+            Render { width, height } => (*width, *height, 1),
+            Empty => (0, 0, 0),
+        }
     }
 }

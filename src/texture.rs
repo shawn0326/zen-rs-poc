@@ -2,7 +2,7 @@ mod source;
 
 pub use source::TextureSource;
 
-use crate::{BufferHandle, Resource, Resources, TextureHandle};
+use crate::{Resource, Resources, TextureHandle};
 
 /// Represents a CPU-side texture resource.
 ///
@@ -17,6 +17,7 @@ use crate::{BufferHandle, Resource, Resources, TextureHandle};
 pub struct Texture {
     source: TextureSource,
     format: wgpu::TextureFormat,
+    usage: wgpu::TextureUsages,
 }
 
 impl Resource for Texture {}
@@ -26,6 +27,9 @@ impl Default for Texture {
         Self {
             source: TextureSource::default(),
             format: wgpu::TextureFormat::Rgba8UnormSrgb, // default srgb format
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST,
         }
     }
 }
@@ -41,7 +45,13 @@ impl Texture {
     /// Creates a new texture with the given source and format.
     #[inline]
     pub fn new(source: TextureSource, format: wgpu::TextureFormat) -> Self {
-        Self { source, format }
+        Self {
+            source,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST,
+        }
     }
 
     /// Sets the texture source in builder style.
@@ -85,17 +95,9 @@ impl Texture {
     pub fn format(&self) -> wgpu::TextureFormat {
         self.format
     }
-}
 
-impl Texture {
     #[inline]
-    pub(crate) fn buffer(&self) -> Option<&BufferHandle> {
-        match &self.source {
-            TextureSource::D1 { buffer_slice, .. } => Some(&buffer_slice.buffer),
-            TextureSource::D2 { buffer_slice, .. } => Some(&buffer_slice.buffer),
-            TextureSource::D3 { buffer_slice, .. } => Some(&buffer_slice.buffer),
-            TextureSource::Cube { buffer_slice, .. } => Some(&buffer_slice.buffer),
-            _ => None,
-        }
+    pub fn usage(&self) -> wgpu::TextureUsages {
+        self.usage
     }
 }
