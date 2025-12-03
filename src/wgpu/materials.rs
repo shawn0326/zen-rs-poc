@@ -42,7 +42,7 @@ fn bind_group(
             },
             (BindingCache::Texture { slot, .. }, MaterialParameter::Texture { val, .. }) => {
                 let texture_gpu = if let Some(texture_handle) = val {
-                    textures.get_gpu_texture_by_id(texture_handle).unwrap()
+                    textures.get_internal_texture(texture_handle)
                 } else {
                     textures.get_default_gpu_texture()
                 };

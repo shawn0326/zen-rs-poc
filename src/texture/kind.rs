@@ -60,6 +60,14 @@ impl TextureKind {
             Empty => (0, 0, 0),
         }
     }
+
+    pub fn data_mut(&mut self) -> Option<&mut TextureData> {
+        use TextureKind::*;
+        match self {
+            D1 { data, .. } | D2 { data, .. } | D3 { data, .. } | Cube { data, .. } => Some(data),
+            _ => None,
+        }
+    }
 }
 
 impl TextureKind {
@@ -123,7 +131,7 @@ impl TextureKind {
         hasher.finish()
     }
 
-    pub fn same_features(&self, other: &Self) -> bool {
+    pub(crate) fn same_features(&self, other: &Self) -> bool {
         self.features() == other.features()
     }
 }

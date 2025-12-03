@@ -8,6 +8,7 @@ use crate::{DirtyVersion, Resource, Resources, SurfaceKey, TextureHandle};
 
 #[derive(Clone, Debug)]
 pub struct Texture {
+    name: Option<String>,
     kind: TextureKind,
     format: wgpu::TextureFormat,
     usage: wgpu::TextureUsages,
@@ -19,6 +20,7 @@ impl Resource for Texture {}
 impl Default for Texture {
     fn default() -> Self {
         Self {
+            name: None,
             kind: TextureKind::default(),
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
@@ -36,9 +38,9 @@ impl Texture {
 }
 
 impl Texture {
-    #[inline]
     pub fn new(kind: TextureKind, format: wgpu::TextureFormat, usage: wgpu::TextureUsages) -> Self {
         Self {
+            name: None,
             kind,
             format,
             usage,
@@ -48,6 +50,7 @@ impl Texture {
 
     pub fn d2_texture(data: impl Into<Box<[u8]>>, width: u32, height: u32) -> Self {
         Self {
+            name: None,
             kind: TextureKind::D2 {
                 data: TextureData::from_bytes(data),
                 width,
@@ -61,6 +64,7 @@ impl Texture {
 
     pub fn surface_texture(surface_key: SurfaceKey, width: u32, height: u32) -> Self {
         Self {
+            name: None,
             kind: TextureKind::Surface {
                 surface_key,
                 width,
@@ -74,6 +78,7 @@ impl Texture {
 
     pub fn render_texture(width: u32, height: u32) -> Self {
         Self {
+            name: None,
             kind: TextureKind::Render { width, height },
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
@@ -85,6 +90,16 @@ impl Texture {
 }
 
 impl Texture {
+    pub fn set_name(&mut self, name: impl Into<String>) -> &mut Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[inline]
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
     pub fn set_kind(&mut self, kind: TextureKind) -> &mut Self {
         if !self.kind.same_features(&kind) {
             self.version.bump();
@@ -124,5 +139,12 @@ impl Texture {
     #[inline]
     pub fn usage(&self) -> wgpu::TextureUsages {
         self.usage
+    }
+}
+
+impl Texture {
+    #[inline]
+    pub(crate) fn ver(&self) -> u64 {
+        self.version.as_u64()
     }
 }

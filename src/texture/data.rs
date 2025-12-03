@@ -23,25 +23,30 @@ impl TextureData {
 }
 
 impl TextureData {
+    #[inline]
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
     }
 
+    #[inline]
     pub fn bytes_mut(&mut self) -> &mut [u8] {
         &mut self.bytes
     }
 
+    #[inline]
     pub fn bytes_len(&self) -> usize {
         self.bytes.len()
     }
 
+    #[inline]
     pub fn mark_dirty(&mut self) {
         self.version.bump();
     }
 }
 
-// impl TextureData {
-//     pub(crate) fn ver(&self) -> u64 {
-//         self.version.as_u64()
-//     }
-// }
+impl TextureData {
+    #[inline]
+    pub(crate) fn ver(&self) -> u64 {
+        self.version.as_u64()
+    }
+}
