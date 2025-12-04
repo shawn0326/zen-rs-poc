@@ -1,4 +1,4 @@
-use crate::{GeometryHandle, ResourceKey, geometry::Geometry};
+use crate::{GeometryHandle, ResourceKey, geometry::Geometry, shader::Shader};
 use slotmap::SecondaryMap;
 
 pub struct InternalGeometry {
@@ -19,6 +19,12 @@ impl InternalGeometry {
             // todo: update internal geometry layout
         }
         self
+    }
+
+    #[allow(dead_code)]
+    pub fn get_or_create_layout(&self, shader: &Shader) -> u64 {
+        shader.vertex_schema_hash()
+        // get vertex layout by shader vertex_schema
     }
 }
 

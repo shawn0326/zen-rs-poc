@@ -11,6 +11,7 @@ use crate::Symbol;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
+use std::hash::DefaultHasher;
 use std::rc::Rc;
 use std::sync::OnceLock;
 
@@ -57,6 +58,7 @@ pub struct Shader {
     source: Cow<'static, str>,
     binding_schema: Box<[BindingEntry]>,
     vertex_schema: Box<[VertexEntry]>,
+    vertex_schema_hash: OnceLock<u64>,
     uniform_lut: OnceLock<HashMap<Symbol, UniformFieldMeta>>,
     texture_lut: OnceLock<HashMap<Symbol, TextureMeta>>,
     sampler_lut: OnceLock<HashMap<Symbol, SamplerMeta>>,
@@ -75,6 +77,7 @@ impl Shader {
             source,
             binding_schema,
             vertex_schema,
+            vertex_schema_hash: OnceLock::new(),
             uniform_lut: OnceLock::new(),
             texture_lut: OnceLock::new(),
             sampler_lut: OnceLock::new(),
@@ -97,6 +100,18 @@ impl Shader {
     #[inline]
     pub(crate) fn vertex_schema(&self) -> &[VertexEntry] {
         &self.vertex_schema
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn vertex_schema_hash(&self) -> u64 {
+        self.vertex_schema_hash
+            .get_or_init(|| {
+                use std::hash::{Hash, Hasher};
+                let mut hasher = DefaultHasher::new();
+                self.vertex_schema.hash(&mut hasher);
+                hasher.finish()
+            })
+            .to_owned()
     }
 
     /// Wraps this Shader in `Rc` for shared ownership across materials.
@@ -214,6 +229,7 @@ impl Clone for Shader {
             binding_schema: self.binding_schema.clone(),
             vertex_schema: self.vertex_schema.clone(),
             // Do not copy caches, reinitialize
+            vertex_schema_hash: OnceLock::new(),
             uniform_lut: OnceLock::new(),
             texture_lut: OnceLock::new(),
             sampler_lut: OnceLock::new(),
