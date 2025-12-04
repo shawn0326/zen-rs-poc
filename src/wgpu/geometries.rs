@@ -1,8 +1,29 @@
-use crate::{GeometryHandle, ResourceKey};
+use crate::{GeometryHandle, ResourceKey, geometry::Geometry};
 use slotmap::SecondaryMap;
 
-pub(super) struct Geometries {
-    pool: SecondaryMap<ResourceKey, GpuGeometry>,
+pub struct InternalGeometry {
+    pub ver: u64,
+}
+
+impl InternalGeometry {
+    pub fn new(geometry: &Geometry) -> Self {
+        Self {
+            ver: geometry.ver(),
+        }
+    }
+
+    pub fn ensure(&mut self, geometry: &Geometry) -> &Self {
+        if self.ver != geometry.ver() {
+            self.ver = geometry.ver();
+
+            // todo: update internal geometry layout
+        }
+        self
+    }
+}
+
+pub struct Geometries {
+    pool: SecondaryMap<ResourceKey, InternalGeometry>,
 }
 
 impl Geometries {
@@ -14,96 +35,23 @@ impl Geometries {
 
     pub fn prepare(
         &mut self,
-        // device: &wgpu::Device,
-        // resources: &Resources,
-        handle: &GeometryHandle,
-    ) -> &GpuGeometry {
+        geometry: &Geometry,
+        geometry_handle: &GeometryHandle,
+    ) -> &InternalGeometry {
         let entry = self
             .pool
-            .entry(handle.raw())
+            .entry(geometry_handle.raw())
             .expect("GeometryHandle has been removed from pool.");
 
-        // let geometry = resources
-        //     .get_geometry(handle)
-        //     .expect("GeometryHandle has been removed from pool.");
+        let internal_geometry = entry.or_insert_with(|| InternalGeometry::new(&geometry));
 
-        // todo: hot reload support
-
-        entry.or_insert_with(|| GpuGeometry::new())
+        internal_geometry.ensure(geometry)
     }
 
     #[allow(dead_code)]
-    pub fn get_gpu_geometry(&self, geometry_handle: &GeometryHandle) -> &GpuGeometry {
+    pub fn get_internal_geometry(&self, geometry_handle: &GeometryHandle) -> &InternalGeometry {
         self.pool
             .get(geometry_handle.raw())
-            .expect("Geometry GPU lost.")
-    }
-}
-
-pub(super) struct GpuGeometry {
-    pub vertex_buffer_layouts: Vec<VertexBufferLayout>,
-}
-
-impl GpuGeometry {
-    pub fn new() -> Self {
-        let vertex_buffer_layouts = vec![
-            // Buffer 0: positions
-            VertexBufferLayout {
-                array_stride: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: vec![wgpu::VertexAttribute {
-                    offset: 0 as wgpu::BufferAddress,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                }],
-            },
-            // Buffer 1: texture coordinates
-            VertexBufferLayout {
-                array_stride: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: vec![wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                }],
-            },
-            // Buffer 2: colors
-            VertexBufferLayout {
-                array_stride: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: vec![wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float32x3,
-                }],
-            },
-        ];
-
-        Self {
-            vertex_buffer_layouts,
-        }
-    }
-
-    pub fn vertex_buffer_layouts(&self) -> Vec<wgpu::VertexBufferLayout<'_>> {
-        self.vertex_buffer_layouts
-            .iter()
-            .map(|vbl| vbl.as_wgpu_layout())
-            .collect::<Vec<_>>()
-    }
-}
-
-pub(super) struct VertexBufferLayout {
-    array_stride: wgpu::BufferAddress,
-    step_mode: wgpu::VertexStepMode,
-    attributes: Vec<wgpu::VertexAttribute>,
-}
-
-impl VertexBufferLayout {
-    pub fn as_wgpu_layout(&self) -> wgpu::VertexBufferLayout<'_> {
-        wgpu::VertexBufferLayout {
-            array_stride: self.array_stride,
-            step_mode: self.step_mode,
-            attributes: &self.attributes,
-        }
+            .expect("Internal Geometry lost.")
     }
 }

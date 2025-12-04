@@ -72,4 +72,8 @@ pub struct VertexEntry {
     pub(crate) name: Box<str>,
     /// Shader location (WGSL `@location(n)` value).
     pub(crate) location: u32,
+    /// Expected vertex format (matches `wgpu::VertexFormat`).
+    pub(crate) format: wgpu::VertexFormat,
+    /// Vertex step mode (matches `wgpu::VertexStepMode`).
+    pub(crate) step_mode: wgpu::VertexStepMode,
 }

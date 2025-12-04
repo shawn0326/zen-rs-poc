@@ -144,7 +144,7 @@ impl Renderer {
             let texture_handles = materials
                 .iter()
                 .flat_map(|material| material.textures())
-                .collect::<Vec<_>>();
+                .collect::<HashSet<_>>();
 
             let textures = texture_handles
                 .iter()
@@ -187,6 +187,13 @@ impl Renderer {
                     );
                 });
 
+            geometry_handles
+                .iter()
+                .zip(geometris.iter())
+                .for_each(|(handle, geometry)| {
+                    self.geometries.prepare(geometry, handle);
+                });
+
             change_flags
         };
 
@@ -226,14 +233,11 @@ impl Renderer {
                         render_pass.draw_indexed(indices, 0, batch_start..(i as u32));
                     }
 
-                    let gpu_geometry = self.geometries.prepare(geometry_handle);
-
                     let internal_material = self.materials.get_internal_material(material_handle);
 
                     let pipeline = self.pipelines.set_pipeline(
                         &self.device,
                         material_handle,
-                        &gpu_geometry,
                         &[
                             global_bind_group.gpu_layout(),
                             primitive_bind_group.gpu_layout(),

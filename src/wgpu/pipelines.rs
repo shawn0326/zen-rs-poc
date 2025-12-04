@@ -1,4 +1,4 @@
-use crate::{MaterialHandle, ResourceKey, wgpu::geometries::GpuGeometry};
+use crate::{MaterialHandle, ResourceKey};
 use std::collections::HashMap;
 
 pub(super) struct Pipelines {
@@ -18,7 +18,6 @@ impl Pipelines {
         &mut self,
         device: &wgpu::Device,
         material_handle: &MaterialHandle,
-        gpu_geometry: &GpuGeometry,
         bindgroup_layout: &[&wgpu::BindGroupLayout],
         resources: &crate::Resources,
     ) -> &wgpu::RenderPipeline {
@@ -41,6 +40,39 @@ impl Pipelines {
                         push_constant_ranges: &[],
                     });
 
+                let vertex_buffer_layouts = &[
+                    // Buffer 0: positions
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &[wgpu::VertexAttribute {
+                            offset: 0 as wgpu::BufferAddress,
+                            shader_location: 0,
+                            format: wgpu::VertexFormat::Float32x3,
+                        }],
+                    },
+                    // Buffer 1: texture coordinates
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &[wgpu::VertexAttribute {
+                            offset: 0,
+                            shader_location: 1,
+                            format: wgpu::VertexFormat::Float32x2,
+                        }],
+                    },
+                    // Buffer 2: colors
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &[wgpu::VertexAttribute {
+                            offset: 0,
+                            shader_location: 2,
+                            format: wgpu::VertexFormat::Float32x3,
+                        }],
+                    },
+                ];
+
                 let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some("Render Pipeline"),
                     layout: Some(&pipeline_layout),
@@ -48,7 +80,7 @@ impl Pipelines {
                         module: &shader,
                         compilation_options: Default::default(),
                         entry_point: Some("vs_main"),
-                        buffers: &gpu_geometry.vertex_buffer_layouts(),
+                        buffers: vertex_buffer_layouts,
                     },
                     fragment: Some(wgpu::FragmentState {
                         // 3.

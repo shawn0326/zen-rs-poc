@@ -182,11 +182,19 @@ impl ShaderBuilder {
 
     /// Registers a vertex attribute read by the shader at WGSL `@location(n)`.
     /// Only captures the shader interface; buffer layout is specified elsewhere.
-    pub fn vertex_attr(mut self, name: &str, location: u32) -> Self {
+    pub fn vertex_attr(
+        mut self,
+        name: &str,
+        location: u32,
+        format: wgpu::VertexFormat,
+        step_mode: wgpu::VertexStepMode,
+    ) -> Self {
         self.vertex_schema.push(VertexEntry {
             key: symbol!(name),
             name: name.into(),
             location,
+            format,
+            step_mode,
         });
         self
     }
@@ -354,6 +362,8 @@ mod validate {
 mod tests {
     use super::*;
     use std::panic;
+    use wgpu::VertexFormat::*;
+    use wgpu::VertexStepMode::*;
 
     #[test]
     fn test_shader_builder_basic() {
@@ -364,7 +374,7 @@ mod tests {
             .float("roughness")
             .finish()
             .texture("albedo_texture", 1)
-            .vertex_attr("position", 0)
+            .vertex_attr("position", 0, Float32x3, Vertex)
             .build();
 
         assert_eq!(shader.source(), "shader code here");
@@ -494,8 +504,8 @@ mod tests {
         let res = panic::catch_unwind(|| {
             let _ = ShaderBuilder::new()
                 .source("s")
-                .vertex_attr("pos", 0)
-                .vertex_attr("uv", 0) // duplicate location
+                .vertex_attr("pos", 0, Float32x3, Vertex)
+                .vertex_attr("uv", 0, Float32x2, Vertex) // duplicate location
                 .build();
         });
         assert!(res.is_err());
