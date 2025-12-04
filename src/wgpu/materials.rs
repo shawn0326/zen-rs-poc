@@ -48,7 +48,7 @@ fn bind_group(
                 };
                 wgpu::BindGroupEntry {
                     binding: *slot,
-                    resource: wgpu::BindingResource::TextureView(&texture_gpu.view),
+                    resource: wgpu::BindingResource::TextureView(&texture_gpu.view()),
                 }
             }
             (BindingCache::Sampler { slot, .. }, MaterialParameter::Sampler { val, .. }) => {

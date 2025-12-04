@@ -33,11 +33,9 @@ impl Targets {
                     TextureKind::Surface { surface_key, .. } => {
                         &surface_textures.get_surface_texture(*surface_key).texture
                     }
-                    _ => {
-                        &textures
-                            .prepare(device, queue, &*texture, texture_handle)
-                            .texture
-                    }
+                    _ => &textures
+                        .prepare(device, queue, &*texture, texture_handle)
+                        .texture(),
                 };
 
                 gpu_texture.create_view(&wgpu::TextureViewDescriptor::default())
@@ -78,9 +76,7 @@ impl Targets {
                 let texture = resources.get_texture(texture_handle).unwrap();
                 let gpu_texture = textures.prepare(device, queue, &*texture, texture_handle);
                 Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &gpu_texture
-                        .texture
-                        .create_view(&wgpu::TextureViewDescriptor::default()),
+                    view: &gpu_texture.view(),
                     depth_ops: Some(wgpu::Operations {
                         load: match depth_stencil_attachment.depth_ops.load {
                             LoadOp::Clear(value) => wgpu::LoadOp::Clear(value),

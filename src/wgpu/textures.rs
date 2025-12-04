@@ -6,6 +6,19 @@ use std::u64;
 fn create_texture(device: &wgpu::Device, texture: &Texture) -> (wgpu::Texture, wgpu::TextureView) {
     let (width, height, depth_or_array_layers) = texture.kind().dimensions();
 
+    let dimension = {
+        use TextureKind::*;
+        match texture.kind() {
+            Empty => panic!("Cannot create texture for Empty kind"),
+            D1 { .. } => wgpu::TextureDimension::D1,
+            D2 { .. } => wgpu::TextureDimension::D2,
+            D3 { .. } => wgpu::TextureDimension::D3,
+            Cube { .. } => wgpu::TextureDimension::D2,
+            Surface { .. } => wgpu::TextureDimension::D2,
+            Render { .. } => wgpu::TextureDimension::D2,
+        }
+    };
+
     let descriptor = wgpu::TextureDescriptor {
         label: texture.name(),
         size: wgpu::Extent3d {
@@ -15,7 +28,7 @@ fn create_texture(device: &wgpu::Device, texture: &Texture) -> (wgpu::Texture, w
         },
         mip_level_count: 1,
         sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
+        dimension,
         format: texture.format(),
         usage: texture.usage(),
         view_formats: &[],
@@ -48,10 +61,10 @@ fn bytes_layout_for_level(
 }
 
 pub struct InternalTexture {
-    pub texture: wgpu::Texture,
-    pub view: wgpu::TextureView,
-    pub texture_ver: u64,
-    pub data_ver: Option<u64>,
+    texture: wgpu::Texture,
+    view: wgpu::TextureView,
+    texture_ver: u64,
+    data_ver: Option<u64>,
 }
 
 impl InternalTexture {
@@ -64,6 +77,16 @@ impl InternalTexture {
             data_ver: None,
             view,
         }
+    }
+
+    #[inline]
+    pub fn texture(&self) -> &wgpu::Texture {
+        &self.texture
+    }
+
+    #[inline]
+    pub fn view(&self) -> &wgpu::TextureView {
+        &self.view
     }
 
     pub fn ensure_gpu_texture(&mut self, device: &wgpu::Device, texture: &Texture) -> &mut Self {
@@ -150,6 +173,7 @@ impl Textures {
         }
     }
 
+    #[inline]
     pub fn get_default_gpu_texture(&self) -> &InternalTexture {
         &self.default_gpu_texture
     }
