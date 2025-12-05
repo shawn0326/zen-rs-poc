@@ -202,6 +202,18 @@ impl Renderer {
                     self.geometries.prepare(geometry, handle);
                 });
 
+            for (_, primitive) in primitives.iter().enumerate().filter(|(i, _)| {
+                let flag = change_flags[*i];
+                (flag & GEOMETRY_CHANGED) != 0 || (flag & MATERIAL_CHANGED) != 0
+            }) {
+                let geometry_handle = primitive.geometry();
+                let material_handle = primitive.material();
+                let geometry = resources.get_geometry(geometry_handle).unwrap();
+                let shader = resources.get_material(material_handle).unwrap().shader();
+                self.geometries
+                    .link_shader(geometry, geometry_handle, shader);
+            }
+
             change_flags
         };
 
@@ -241,10 +253,15 @@ impl Renderer {
                         render_pass.draw_indexed(indices, 0, batch_start..(i as u32));
                     }
 
+                    let internal_geometry = self.geometries.get_internal_geometry(geometry_handle);
                     let internal_material = self.materials.get_internal_material(material_handle);
+
+                    let geometry_desc = internal_geometry
+                        .get_desc(resources.get_material(material_handle).unwrap().shader());
 
                     let pipeline = self.pipelines.set_pipeline(
                         &self.device,
+                        geometry_desc,
                         material_handle,
                         &[
                             global_bind_group.gpu_layout(),
@@ -260,19 +277,33 @@ impl Renderer {
                         render_pass.set_bind_group(2, &internal_material.bind_group, &[]);
                     }
 
-                    if geometry_changed {
-                        self.buffers.set_buffers_to_render_pass(
-                            resources,
-                            &mut render_pass,
-                            geometry_handle,
-                        );
-                    }
+                    geometry_desc
+                        .entries()
+                        .iter()
+                        .enumerate()
+                        .for_each(|(i, entry)| {
+                            render_pass.set_vertex_buffer(
+                                i as u32,
+                                self.buffers
+                                    .get_internal_buffer_by_key(entry.0)
+                                    .wgpu_buffer()
+                                    .slice(entry.1.clone()),
+                            );
+                        });
 
                     batch_start = i as u32;
 
                     if let Some(index_buffer) =
                         resources.get_geometry(geometry_handle).unwrap().indices()
                     {
+                        render_pass.set_index_buffer(
+                            self.buffers
+                                .get_internal_buffer(&index_buffer.buffer_slice.buffer)
+                                .wgpu_buffer()
+                                .slice(index_buffer.buffer_slice.range_u64()),
+                            index_buffer.format,
+                        );
+
                         indices = 0..index_buffer.index_count();
                     } else {
                         indices = 0..0;

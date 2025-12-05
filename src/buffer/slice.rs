@@ -1,7 +1,7 @@
 use crate::{BufferHandle, Resources};
 use std::ops::Range;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BufferSlice {
     pub buffer: BufferHandle,
     pub offset: usize,

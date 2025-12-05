@@ -102,7 +102,6 @@ impl Shader {
         &self.vertex_schema
     }
 
-    #[allow(dead_code)]
     pub(crate) fn vertex_schema_hash(&self) -> u64 {
         self.vertex_schema_hash
             .get_or_init(|| {
@@ -111,7 +110,7 @@ impl Shader {
                 self.vertex_schema.hash(&mut hasher);
                 hasher.finish()
             })
-            .to_owned()
+            .clone()
     }
 
     /// Wraps this Shader in `Rc` for shared ownership across materials.

@@ -4,26 +4,25 @@ use crate::{
     BufferHandle, DirtyVersion, GeometryHandle, Resource, Resources, Symbol, buffer::BufferSlice,
 };
 use std::collections::HashMap;
-use wgpu::{IndexFormat, VertexFormat};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct VertexBuffer {
     pub buffer_slice: BufferSlice,
     pub stride: u64,
     pub step_mode: wgpu::VertexStepMode,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct VertexAttribute {
     pub vertex_buffer: VertexBuffer,
     pub byte_offset: u64,
-    pub format: VertexFormat,
+    pub format: wgpu::VertexFormat,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct IndexBuffer {
     pub buffer_slice: BufferSlice,
-    pub format: IndexFormat,
+    pub format: wgpu::IndexFormat,
 }
 
 impl IndexBuffer {

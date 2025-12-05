@@ -1,4 +1,4 @@
-use crate::{BufferHandle, GeometryHandle, ResourceKey, Resources, Symbol, symbol};
+use crate::{BufferHandle, ResourceKey, Resources};
 use slotmap::SecondaryMap;
 use wgpu::util::DeviceExt;
 
@@ -64,56 +64,11 @@ impl Buffers {
         self.pool.get(handle.raw()).unwrap()
     }
 
-    pub fn destroy_internal_buffer(&mut self, key: ResourceKey) {
-        self.pool.remove(key);
+    pub fn get_internal_buffer_by_key(&self, key: ResourceKey) -> &InternalBuffer {
+        self.pool.get(key).unwrap()
     }
 
-    pub fn set_buffers_to_render_pass(
-        &self,
-        resources: &Resources,
-        render_pass: &mut wgpu::RenderPass,
-        geometry_handle: &GeometryHandle,
-    ) {
-        const NAMES: [Symbol; 3] = [
-            symbol!("positions"),
-            symbol!("tex_coords"),
-            symbol!("colors"),
-        ];
-
-        let geometry = resources
-            .get_geometry(geometry_handle)
-            .expect("GeometryHandle has been removed from resources.");
-
-        let mut location = 0;
-
-        for name in &NAMES {
-            let attr = geometry.get_attribute(*name).unwrap();
-
-            let buffer_handle = &attr.vertex_buffer.buffer_slice.buffer;
-
-            let internal_buffer = self.get_internal_buffer(buffer_handle);
-
-            render_pass.set_vertex_buffer(
-                location,
-                internal_buffer
-                    .wgpu_buffer()
-                    .slice(attr.vertex_buffer.buffer_slice.range_u64()),
-            );
-
-            location += 1;
-        }
-
-        if let Some(index_buffer) = geometry.indices() {
-            let buffer_handle = &index_buffer.buffer_slice.buffer;
-
-            let internal_buffer = self.get_internal_buffer(buffer_handle);
-
-            render_pass.set_index_buffer(
-                internal_buffer
-                    .wgpu_buffer()
-                    .slice(index_buffer.buffer_slice.range_u64()),
-                index_buffer.format,
-            );
-        }
+    pub fn destroy_internal_buffer(&mut self, key: ResourceKey) {
+        self.pool.remove(key);
     }
 }
