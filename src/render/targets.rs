@@ -1,11 +1,11 @@
+use super::surfaces::ActiveSurfaceTextures;
 use super::textures::Textures;
 use crate::{
     target::{LoadOp, RenderTarget, StoreOp},
     texture::TextureKind,
-    wgpu::surfaces::ActiveSurfaceTextures,
 };
 
-pub(super) struct Targets {}
+pub struct Targets {}
 
 impl Targets {
     pub fn new() -> Self {

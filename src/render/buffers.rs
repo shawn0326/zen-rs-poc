@@ -1,4 +1,4 @@
-use crate::{BufferHandle, GeometryHandle, ResourceKey, Resources, Symbol};
+use crate::{BufferHandle, GeometryHandle, ResourceKey, Resources, Symbol, symbol};
 use slotmap::SecondaryMap;
 use wgpu::util::DeviceExt;
 

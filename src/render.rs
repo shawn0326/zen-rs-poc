@@ -1,16 +1,24 @@
-use super::{
-    bindgroups::{GlobalBindGroup, PrimitiveBindGroup},
-    buffers::Buffers,
-    geometries::Geometries,
-    materials::Materials,
-    pipelines::Pipelines,
-    samplers::Samplers,
-    surfaces::Surfaces,
-    targets::Targets,
-    textures::Textures,
-};
+mod bindgroups;
+mod buffers;
+mod geometries;
+mod materials;
+mod pipelines;
+mod samplers;
+mod surfaces;
+mod targets;
+mod textures;
+
 use crate::{ResourceKey, Resources, camera::Camera, primitive::Primitive, target::RenderTarget};
+use bindgroups::{GlobalBindGroup, PrimitiveBindGroup};
+use buffers::Buffers;
+use geometries::Geometries;
+use materials::Materials;
+use pipelines::Pipelines;
+use samplers::Samplers;
 use std::collections::HashSet;
+use surfaces::Surfaces;
+use targets::Targets;
+use textures::Textures;
 
 const GEOMETRY_CHANGED: u8 = 0b01;
 const MATERIAL_CHANGED: u8 = 0b10;

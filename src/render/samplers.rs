@@ -1,7 +1,7 @@
 use crate::sampler::Sampler;
 use std::collections::HashMap;
 
-pub(super) struct Samplers {
+pub struct Samplers {
     default_sampler: Sampler,
     hash_map: HashMap<Sampler, wgpu::Sampler>,
 }

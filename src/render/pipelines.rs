@@ -1,7 +1,7 @@
 use crate::{MaterialHandle, ResourceKey};
 use std::collections::HashMap;
 
-pub(super) struct Pipelines {
+pub struct Pipelines {
     format: wgpu::TextureFormat,
     map: HashMap<ResourceKey, wgpu::RenderPipeline>,
 }

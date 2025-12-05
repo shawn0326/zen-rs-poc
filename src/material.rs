@@ -12,10 +12,10 @@ mod parameter;
 
 pub(crate) use parameter::*;
 
-use crate::Symbol;
 use crate::math::*;
 use crate::sampler::Sampler;
 use crate::shader::*;
+use crate::utils::*;
 use crate::{Resource, TextureHandle};
 
 /// Generates typed uniform accessors (setter/getter) with consistent docs.
@@ -247,6 +247,7 @@ impl Material {
 mod tests {
     use super::*;
     use crate::shader::builtins::pbr_shader;
+    use crate::symbol;
 
     #[test]
     fn test_build_material_resources() {

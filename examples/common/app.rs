@@ -9,10 +9,10 @@ use zen_rs_poc::{
     geometry::Geometry,
     math::{Color4, Mat4, Vec3},
     primitive::Primitive,
+    render::Renderer,
     symbol,
     target::{LoadOp, RenderTarget, RenderTargetBuilder},
     texture::Texture,
-    wgpu::Renderer,
 };
 
 pub struct MainCamera {

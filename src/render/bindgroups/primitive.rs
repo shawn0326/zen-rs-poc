@@ -24,7 +24,7 @@ fn create_primitive_bind_group(
     })
 }
 
-pub(in super::super) struct PrimitiveBindGroup {
+pub struct PrimitiveBindGroup {
     capacity: usize,
     cpu_memory: Vec<Mat4>,
     gpu_buffer: wgpu::Buffer,

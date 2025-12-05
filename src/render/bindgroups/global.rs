@@ -1,6 +1,6 @@
 use crate::camera::Camera;
 
-pub(in super::super) struct GlobalBindGroup {
+pub struct GlobalBindGroup {
     gpu_buffer: wgpu::Buffer,
     gpu_layout: wgpu::BindGroupLayout,
     gpu_bind_group: wgpu::BindGroup,

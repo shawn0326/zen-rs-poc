@@ -4,7 +4,7 @@ use crate::{Resources, SurfaceKey};
 use slotmap::SecondaryMap;
 use std::collections::HashMap;
 
-pub(super) struct ActiveSurfaceTextures(HashMap<SurfaceKey, wgpu::SurfaceTexture>);
+pub struct ActiveSurfaceTextures(HashMap<SurfaceKey, wgpu::SurfaceTexture>);
 
 impl ActiveSurfaceTextures {
     pub fn get_surface_texture(&self, surface_key: SurfaceKey) -> &wgpu::SurfaceTexture {
@@ -18,7 +18,7 @@ impl ActiveSurfaceTextures {
     }
 }
 
-pub(super) struct Surfaces {
+pub struct Surfaces {
     map: SecondaryMap<SurfaceKey, wgpu::SurfaceConfiguration>,
 }
 
